@@ -8,3 +8,5 @@ testlogin.html
 cmd/cmd
 testlogin_files/
 *.exe
+.DS_Store
+**/.DS_Store

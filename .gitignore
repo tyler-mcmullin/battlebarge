@@ -6,3 +6,5 @@ firestore-debug.log
 ui-debug.log
 testlogin.html
 cmd
+testlogin_files/
+*.exe

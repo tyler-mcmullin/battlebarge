@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 
-	firebase "firebase.google.com/go/v4"
+	firebaseAdmin "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/auth"
 )
 
@@ -12,7 +12,7 @@ var AuthClient *auth.Client
 func ConnectFirebase(projectID string) error {
 	ctx := context.Background()
 
-	app, err := firebase.NewApp(ctx, &firebase.Config{
+	app, err := firebaseAdmin.NewApp(ctx, &firebaseAdmin.Config{
 		ProjectID: projectID,
 	})
 	if err != nil {

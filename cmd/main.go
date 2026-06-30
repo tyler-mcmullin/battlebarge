@@ -33,6 +33,7 @@ func main() {
 
 	//get routes and controllers
 	routes.GetAuthControllers(r)
+	routes.GetUserControllers(r)
 
 	err = r.Run(":8080")
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Database Structs
 type User struct {
 	ID        string    `json:"id" db:"id"`
 	Email     string    `json:"email" db:"email"`
@@ -14,41 +15,42 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
-type RegisterRequest struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 type Warband struct {
-	ID                uuid.UUID `json:"id"`
-	UserID            string    `json:"user_id"`
-	Name              string    `json:"name"`
-	Faction           string    `json:"faction"`
-	Description       string    `json:"description"`
-	Units             []Unit    `json:"units"`
-	NumUnits          int       `json:"num_units"`
-	TotalPointsCost   int       `json:"total_points_cost"`
-	CrusadePoints     int       `json:"crusade_points"`
-	RequisitionPoints int       `json:"requisition_points"`
-	SupplyLimit       int       `json:"supply_limit"`
-	SupplyCost        int       `json:"supply_cost"`
+	ID                uuid.UUID `json:"id" db:"id"`
+	UserID            string    `json:"user_id" db:"user_id"`
+	Name              string    `json:"name" db:"name"`
+	Faction           string    `json:"faction" db:"faction"`
+	Description       string    `json:"description" db:"description"`
+	Units             []Unit    `json:"units" db:"units"`
+	NumUnits          int       `json:"num_units" db:"num_units"`
+	TotalPointsCost   int       `json:"total_points_cost" db:"total_points_cost"`
+	CrusadePoints     int       `json:"crusade_points" db:"crusade_points"`
+	RequisitionPoints int       `json:"requisition_points" db:"requisition_points"`
+	SupplyLimit       int       `json:"supply_limit" db:"supply_limit"`
+	SupplyCost        int       `json:"supply_cost" db:"supply_cost"`
 	CreatedAt         time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type Unit struct {
-	ID            uuid.UUID `json:"id"`
-	UnitName      string    `json:"unit_name"`
-	NarrativeName string    `json:"narrative_name"`
-	Points        int       `json:"points"`
-	Experience    int       `json:"experience"`
-	Perks         []Perk    `json:"perks"`
+	ID            uuid.UUID `json:"id" db:"id"`
+	UnitName      string    `json:"unit_name" db:"unit_name"`
+	NarrativeName string    `json:"narrative_name" db:"narrative_name"`
+	Points        int       `json:"points" db:"points"`
+	Experience    int       `json:"experience" db:"experience"`
+	Perks         []Perk    `json:"perks" db:"perks"`
 }
 
 type Perk struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string `json:"name" db:"name"`
+	Description string `json:"description" db:"description"`
+}
+
+// Request Structs
+type RegisterRequest struct {
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type CreateWarbandRequest struct {

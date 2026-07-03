@@ -50,7 +50,7 @@ func RequireAuth() gin.HandlerFunc {
 // LoadUser fetches the full User record from Postgres using the UID attached
 // to context by RequireAuth, and attaches it to context. Must be chained
 // after RequireAuth(). Use this only on routes that actually need profile
-// data (username, email, etc.) - otherwise prefer RequireAuth() alone.
+// data (username, email, etc.) otherwise use RequireAuth() alone for lightweight auth.
 func LoadUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uid := c.GetString(ContextUIDKey)

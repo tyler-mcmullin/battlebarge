@@ -93,6 +93,46 @@ func CreateWarband(warband models.Warband) error {
 	return err
 }
 
+func UpdateWarband(id string, userID string, req models.UpdateWarbandRequest) (models.Warband, error) {
+	query := `
+		UPDATE warbands
+		SET name = COALESCE($1, name),
+		    faction = COALESCE($2, faction),
+		    description = COALESCE($3, description),
+		    requisition_points = COALESCE($4, requisition_points),
+		    supply_limit = COALESCE($5, supply_limit),
+		    updated_at = now()
+		WHERE id = $6 AND user_id = $7
+		RETURNING id, user_id, name, faction, description, units,
+		          num_units, total_points_cost, crusade_points,
+		          requisition_points, supply_limit, supply_cost,
+		          created_at, updated_at
+	`
+
+	var w models.Warband
+	var unitsJSON []byte
+
+	err := db.PGClient.QueryRow(context.Background(), query,
+		req.Name, req.Faction, req.Description,
+		req.RequisitionPoints, req.SupplyLimit,
+		id, userID,
+	).Scan(
+		&w.ID, &w.UserID, &w.Name, &w.Faction, &w.Description, &unitsJSON,
+		&w.NumUnits, &w.TotalPointsCost, &w.CrusadePoints,
+		&w.RequisitionPoints, &w.SupplyLimit, &w.SupplyCost,
+		&w.CreatedAt, &w.UpdatedAt,
+	)
+	if err != nil {
+		return models.Warband{}, err
+	}
+
+	if err := json.Unmarshal(unitsJSON, &w.Units); err != nil {
+		return models.Warband{}, err
+	}
+
+	return w, nil
+}
+
 // Data Queries
 
 func GetAllWarbands(id string) ([]models.Warband, error) {

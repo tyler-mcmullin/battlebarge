@@ -75,3 +75,22 @@ func GetWarbandByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, warband)
 }
+
+func UpdateWarband(c *gin.Context) {
+	id := c.Param("id")
+	uid := c.GetString(middleware.ContextUIDKey)
+
+	var req models.UpdateWarbandRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	warband, err := repositories.UpdateWarband(id, uid, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update warband"})
+		return
+	}
+
+	c.JSON(http.StatusOK, warband)
+}

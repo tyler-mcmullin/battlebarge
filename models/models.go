@@ -56,3 +56,11 @@ type RegisterRequest struct {
 type CreateWarbandRequest struct {
 	Name string `json:"name" binding:"required"`
 }
+
+type UpdateWarbandRequest struct {
+	Name              *string `json:"name"`
+	Faction           *string `json:"faction"`
+	Description       *string `json:"description"`
+	RequisitionPoints *int    `json:"requisition_points"`
+	SupplyLimit       *int    `json:"supply_limit"`
+}

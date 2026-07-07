@@ -18,4 +18,5 @@ func GetWarbandControllers(r *gin.Engine) {
 	priv.Use(middleware.RequireAuth())
 	priv.GET("", controllers.GetAllWarbands)
 	priv.POST("/create", controllers.CreateWarband)
+	priv.PATCH("/:id", controllers.UpdateWarband)
 }

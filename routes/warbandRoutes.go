@@ -9,6 +9,13 @@ import (
 
 func GetWarbandControllers(r *gin.Engine) {
 	group := r.Group("/warbands")
-	group.Use(middleware.RequireAuth())
-	group.POST("/create", controllers.CreateWarband)
+
+	// Public
+	group.GET("/:id", controllers.GetWarbandByID)
+
+	// Require Auth
+	priv := group.Group("")
+	priv.Use(middleware.RequireAuth())
+	priv.GET("", controllers.GetAllWarbands)
+	priv.POST("/create", controllers.CreateWarband)
 }

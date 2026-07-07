@@ -51,3 +51,27 @@ func CreateWarband(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, warband)
 }
+
+func GetAllWarbands(c *gin.Context) {
+	uid := c.GetString(middleware.ContextUIDKey)
+
+	warbands, err := repositories.GetAllWarbands(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch warbands"})
+		return
+	}
+
+	c.JSON(http.StatusOK, warbands)
+}
+
+func GetWarbandByID(c *gin.Context) {
+	id := c.Param("id")
+
+	warband, err := repositories.GetWarbandByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch warband"})
+		return
+	}
+
+	c.JSON(http.StatusOK, warband)
+}

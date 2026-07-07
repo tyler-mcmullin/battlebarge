@@ -7,6 +7,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/jackc/pgx/v5"
+
 	"battlebarge/db"
 	"battlebarge/models"
 )
@@ -131,6 +133,26 @@ func UpdateWarband(id string, userID string, req models.UpdateWarbandRequest) (m
 	}
 
 	return w, nil
+}
+
+// Data Deletions
+
+func DeleteWarband(id string, userID string) error {
+	query := `
+		DELETE FROM warbands
+		WHERE id = $1 AND user_id = $2
+	`
+
+	tag, err := db.PGClient.Exec(context.Background(), query, id, userID)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
 }
 
 // Data Queries

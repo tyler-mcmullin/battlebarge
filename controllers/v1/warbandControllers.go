@@ -94,3 +94,16 @@ func UpdateWarband(c *gin.Context) {
 
 	c.JSON(http.StatusOK, warband)
 }
+
+func DeleteWarband(c *gin.Context) {
+	id := c.Param("id")
+	uid := c.GetString(middleware.ContextUIDKey)
+
+	err := repositories.DeleteWarband(id, uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete warband"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

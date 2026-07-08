@@ -16,8 +16,7 @@ func GetUnitControllers(r *gin.Engine) {
 	// Require Auth
 	priv := group.Group("")
 	priv.Use(middleware.RequireAuth())
-	//priv.GET("", controllers.GetAllUnits)
-	priv.POST("/create", controllers.CreateWarband)
+	priv.POST("/create", controllers.AddUnit)
 	//priv.PATCH("/:id", controllers.UpdateUnit)
 	//priv.DELETE("/:id", controllers.DeleteUnit)
 }

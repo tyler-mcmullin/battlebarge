@@ -16,20 +16,22 @@ type User struct {
 }
 
 type Warband struct {
-	ID                uuid.UUID `json:"id" db:"id"`
-	UserID            string    `json:"user_id" db:"user_id"`
-	Name              string    `json:"name" db:"name"`
-	Faction           string    `json:"faction" db:"faction"`
-	Description       string    `json:"description" db:"description"`
-	Units             []Unit    `json:"units" db:"units"`
-	NumUnits          int       `json:"num_units" db:"num_units"`
-	TotalPointsCost   int       `json:"total_points_cost" db:"total_points_cost"`
-	CrusadePoints     int       `json:"crusade_points" db:"crusade_points"`
-	RequisitionPoints int       `json:"requisition_points" db:"requisition_points"`
-	SupplyLimit       int       `json:"supply_limit" db:"supply_limit"`
-	SupplyCost        int       `json:"supply_cost" db:"supply_cost"`
-	CreatedAt         time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at" db:"updated_at"`
+	ID                uuid.UUID `json:"id"`
+	UserID            string    `json:"user_id"`
+	Name              string    `json:"name"`
+	Faction           string    `json:"faction"`
+	Description       string    `json:"description"`
+	RequisitionPoints int       `json:"requisition_points"`
+	SupplyLimit       int       `json:"supply_limit"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+
+	// Computed fields populated at fetch time
+	// from units table via GetWarbandTotals/GetUnitsByWarbandID.
+	Units           []Unit `json:"units"`
+	NumUnits        int    `json:"num_units"`
+	TotalPointsCost int    `json:"total_points_cost"`
+	CrusadePoints   int    `json:"crusade_points"`
 }
 
 type Unit struct {

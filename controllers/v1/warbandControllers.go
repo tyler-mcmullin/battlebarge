@@ -38,7 +38,6 @@ func CreateWarband(c *gin.Context) {
 		CrusadePoints:     0,
 		RequisitionPoints: 0,
 		SupplyLimit:       0,
-		SupplyCost:        0,
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}

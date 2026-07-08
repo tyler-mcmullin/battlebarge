@@ -62,10 +62,10 @@ func CreateWarband(warband models.Warband) error {
 	query := `
 		INSERT INTO warbands (
 			id, user_id, name, faction, description,
-			crusade_points, requisition_points,
-			supply_limit, supply_cost, created_at, updated_at
+			requisition_points, supply_limit,
+			created_at, updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	_, err := db.PGClient.Exec(
@@ -76,10 +76,8 @@ func CreateWarband(warband models.Warband) error {
 		warband.Name,
 		warband.Faction,
 		warband.Description,
-		warband.CrusadePoints,
 		warband.RequisitionPoints,
 		warband.SupplyLimit,
-		warband.SupplyCost,
 		warband.CreatedAt,
 		warband.UpdatedAt,
 	)
@@ -98,7 +96,7 @@ func UpdateWarband(id string, userID string, req models.UpdateWarbandRequest) (m
 		    updated_at = now()
 		WHERE id = $6 AND user_id = $7
 		RETURNING id, user_id, name, faction, description,
-		          crusade_points, requisition_points, supply_limit, supply_cost,
+		          requisition_points, supply_limit,
 		          created_at, updated_at
 	`
 
@@ -110,25 +108,26 @@ func UpdateWarband(id string, userID string, req models.UpdateWarbandRequest) (m
 		id, userID,
 	).Scan(
 		&w.ID, &w.UserID, &w.Name, &w.Faction, &w.Description,
-		&w.CrusadePoints, &w.RequisitionPoints, &w.SupplyLimit, &w.SupplyCost,
+		&w.RequisitionPoints, &w.SupplyLimit,
 		&w.CreatedAt, &w.UpdatedAt,
 	)
 	if err != nil {
 		return models.Warband{}, err
 	}
 
-	numUnits, totalPoints, err := GetWarbandTotals(id)
-	if err != nil {
-		return models.Warband{}, err
-	}
-	w.NumUnits = numUnits
-	w.TotalPointsCost = totalPoints
-
 	units, err := GetUnitsByWarbandID(id)
 	if err != nil {
 		return models.Warband{}, err
 	}
 	w.Units = units
+	w.NumUnits = len(units)
+
+	total := 0
+	for _, u := range units {
+		total += u.Points
+	}
+	w.TotalPointsCost = total
+	w.CrusadePoints = CalculateCrusadePoints(units)
 
 	return w, nil
 }
@@ -174,7 +173,7 @@ func DeleteUnit(id string) error {
 func GetAllWarbands(id string) ([]models.Warband, error) {
 	query := `
 		SELECT id, user_id, name, faction, description,
-		       crusade_points, requisition_points, supply_limit, supply_cost,
+		       requisition_points, supply_limit,
 		       created_at, updated_at
 		FROM warbands
 		WHERE user_id = $1
@@ -194,25 +193,26 @@ func GetAllWarbands(id string) ([]models.Warband, error) {
 
 		err := rows.Scan(
 			&w.ID, &w.UserID, &w.Name, &w.Faction, &w.Description,
-			&w.CrusadePoints, &w.RequisitionPoints, &w.SupplyLimit, &w.SupplyCost,
+			&w.RequisitionPoints, &w.SupplyLimit,
 			&w.CreatedAt, &w.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		numUnits, totalPoints, err := GetWarbandTotals(w.ID.String())
-		if err != nil {
-			return nil, err
-		}
-		w.NumUnits = numUnits
-		w.TotalPointsCost = totalPoints
-
 		units, err := GetUnitsByWarbandID(w.ID.String())
 		if err != nil {
 			return nil, err
 		}
 		w.Units = units
+		w.NumUnits = len(units)
+
+		total := 0
+		for _, u := range units {
+			total += u.Points
+		}
+		w.TotalPointsCost = total
+		w.CrusadePoints = CalculateCrusadePoints(units)
 
 		warbands = append(warbands, w)
 	}
@@ -229,7 +229,7 @@ func GetWarbandByID(id string) (models.Warband, error) {
 
 	query := `
 		SELECT id, user_id, name, faction, description,
-		       crusade_points, requisition_points, supply_limit, supply_cost,
+		       requisition_points, supply_limit,
 		       created_at, updated_at
 		FROM warbands
 		WHERE id = $1
@@ -237,25 +237,27 @@ func GetWarbandByID(id string) (models.Warband, error) {
 
 	err := db.PGClient.QueryRow(context.Background(), query, id).Scan(
 		&w.ID, &w.UserID, &w.Name, &w.Faction, &w.Description,
-		&w.CrusadePoints, &w.RequisitionPoints, &w.SupplyLimit, &w.SupplyCost,
+		&w.RequisitionPoints, &w.SupplyLimit,
 		&w.CreatedAt, &w.UpdatedAt,
 	)
 	if err != nil {
 		return models.Warband{}, err
 	}
 
-	numUnits, totalPoints, err := GetWarbandTotals(id)
-	if err != nil {
-		return models.Warband{}, err
-	}
-	w.NumUnits = numUnits
-	w.TotalPointsCost = totalPoints
-
 	units, err := GetUnitsByWarbandID(id)
 	if err != nil {
 		return models.Warband{}, err
 	}
 	w.Units = units
+	w.NumUnits = len(units)
+
+	total := 0
+	for _, u := range units {
+		total += u.Points
+	}
+	w.TotalPointsCost = total
+
+	w.CrusadePoints = CalculateCrusadePoints(units)
 
 	return w, nil
 }
@@ -302,23 +304,6 @@ func GetUnitsByWarbandID(warbandID string) ([]models.Unit, error) {
 	return units, nil
 }
 
-func GetWarbandTotals(warbandID string) (int, int, error) {
-	var numUnits, totalPoints int
-
-	query := `
-		SELECT COUNT(*), COALESCE(SUM(points), 0)
-		FROM units
-		WHERE warband_id = $1
-	`
-
-	err := db.PGClient.QueryRow(context.Background(), query, warbandID).Scan(&numUnits, &totalPoints)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return numUnits, totalPoints, nil
-}
-
 func IsWarbandOwner(warbandID string, userID string) (bool, error) {
 	var exists bool
 
@@ -340,15 +325,15 @@ func SaveWarband(warband models.Warband) error {
 	query := `
 		UPDATE warbands
 		SET name = $1, faction = $2, description = $3,
-		    crusade_points = $4, requisition_points = $5,
-		    supply_limit = $6, supply_cost = $7, updated_at = $8
-		WHERE id = $9 AND user_id = $10
+		    requisition_points = $4,
+		    supply_limit = $5, updated_at = $6
+		WHERE id = $7 AND user_id = $8
 	`
 
 	tag, err := db.PGClient.Exec(context.Background(), query,
 		warband.Name, warband.Faction, warband.Description,
-		warband.CrusadePoints, warband.RequisitionPoints,
-		warband.SupplyLimit, warband.SupplyCost, warband.UpdatedAt,
+		warband.RequisitionPoints,
+		warband.SupplyLimit, warband.UpdatedAt,
 		warband.ID, warband.UserID,
 	)
 	if err != nil {
@@ -495,4 +480,20 @@ func IncrementUnitXP(id string, amount int) (models.Unit, error) {
 	}
 
 	return u, nil
+}
+
+// Other Helpers
+
+func CalculateCrusadePoints(units []models.Unit) int {
+	points := 0
+	for _, u := range units {
+		for _, p := range u.Perks {
+			if p.IsScar {
+				points--
+			} else {
+				points++
+			}
+		}
+	}
+	return points
 }

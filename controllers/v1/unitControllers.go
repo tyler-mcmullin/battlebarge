@@ -14,9 +14,7 @@ import (
 	"battlebarge/repositories"
 )
 
-func AddUnit(c *gin.Context) {
-	warbandID := c.Param("id")
-
+func CreateUnit(c *gin.Context) {
 	var req models.CreateUnitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -29,18 +27,26 @@ func AddUnit(c *gin.Context) {
 		return
 	}
 
-	warband, err := repositories.GetWarbandByIDForOwner(warbandID, uid)
+	owns, err := repositories.IsWarbandOwner(req.WarbandID, uid)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "warband not found"})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !owns {
+		c.JSON(http.StatusNotFound, gin.H{"error": "warband not found"})
+		return
+	}
+
+	now := time.Now()
+	warbandUUID, err := uuid.Parse(req.WarbandID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid warband_id"})
 		return
 	}
 
 	unit := models.Unit{
 		ID:            uuid.New(),
+		WarbandID:     warbandUUID,
 		UnitName:      req.UnitName,
 		NarrativeName: "",
 		Bio:           "",
@@ -48,6 +54,8 @@ func AddUnit(c *gin.Context) {
 		Kills:         0,
 		Experience:    0,
 		Perks:         []models.Perk{},
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 
 	if req.NarrativeName != nil {
@@ -60,21 +68,26 @@ func AddUnit(c *gin.Context) {
 		unit.Points = *req.Points
 	}
 
-	warband.Units = append(warband.Units, unit)
-	warband.NumUnits = len(warband.Units)
-
-	total := 0
-	for _, u := range warband.Units {
-		total += u.Points
-	}
-	warband.TotalPointsCost = total
-
-	warband.UpdatedAt = time.Now()
-
-	if err := repositories.SaveWarband(warband); err != nil {
+	if err := repositories.CreateUnit(unit); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, warband)
+	c.JSON(http.StatusCreated, unit)
+}
+
+func GetUnit(c *gin.Context) {
+	id := c.Param("id")
+
+	unit, err := repositories.GetUnitByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, unit)
 }

@@ -1,11 +1,13 @@
 package v1
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"battlebarge/middleware"
 	"battlebarge/models"
@@ -33,9 +35,6 @@ func CreateWarband(c *gin.Context) {
 		Name:              req.Name,
 		Faction:           "",
 		Description:       "",
-		Units:             []models.Unit{},
-		NumUnits:          0,
-		TotalPointsCost:   0,
 		CrusadePoints:     0,
 		RequisitionPoints: 0,
 		SupplyLimit:       0,
@@ -82,6 +81,10 @@ func GetWarbandByID(c *gin.Context) {
 
 	warband, err := repositories.GetWarbandByID(id)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "warband not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch warband"})
 		return
 	}
@@ -92,6 +95,10 @@ func GetWarbandByID(c *gin.Context) {
 func UpdateWarband(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)
+	if uid == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
 
 	var req models.UpdateWarbandRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -101,6 +108,10 @@ func UpdateWarband(c *gin.Context) {
 
 	warband, err := repositories.UpdateWarband(id, uid, req)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "warband not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update warband"})
 		return
 	}
@@ -111,9 +122,17 @@ func UpdateWarband(c *gin.Context) {
 func DeleteWarband(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)
+	if uid == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
 
 	err := repositories.DeleteWarband(id, uid)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "warband not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete warband"})
 		return
 	}

@@ -34,6 +34,7 @@ type Warband struct {
 
 type Unit struct {
 	ID            uuid.UUID `json:"id" db:"id"`
+	WarbandID     uuid.UUID `json:"warband_id" db:"warband_id"`
 	UnitName      string    `json:"unit_name" db:"unit_name"`
 	NarrativeName string    `json:"narrative_name" db:"narrative_name"`
 	Bio           string    `json:"bio" db:"bio"`
@@ -41,6 +42,8 @@ type Unit struct {
 	Kills         int       `json:"kills" db:"kills"`
 	Experience    int       `json:"experience" db:"experience"`
 	Perks         []Perk    `json:"perks" db:"perks"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type Perk struct {
@@ -73,6 +76,7 @@ type UpdateWarbandRequest struct {
 }
 
 type CreateUnitRequest struct {
+	WarbandID     string  `json:"warband_id" binding:"required"`
 	UnitName      string  `json:"unit_name" binding:"required"`
 	NarrativeName *string `json:"narrative_name"`
 	Bio           *string `json:"bio"`

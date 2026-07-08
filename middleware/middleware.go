@@ -17,8 +17,7 @@ const (
 
 // RequireAuth verifies the Firebase ID token sent in the Authorization header
 // (format: "Bearer <token>") and attaches the verified UID to the request
-// context. It does NOT touch Postgres - routes that only need to know who
-// the caller is (e.g. to stamp ownership on a new record) should use this
+// context. Routes that only need to know who the caller is should use this
 // alone. Routes that need full user data should additionally chain LoadUser().
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {

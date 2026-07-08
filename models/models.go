@@ -36,7 +36,10 @@ type Unit struct {
 	ID            uuid.UUID `json:"id" db:"id"`
 	UnitName      string    `json:"unit_name" db:"unit_name"`
 	NarrativeName string    `json:"narrative_name" db:"narrative_name"`
+	Bio           string    `json:"bio" db:"bio"`
 	Points        int       `json:"points" db:"points"`
+	XP            int       `json:"xp" db:"xp"`
+	Kills         int       `json:"kills" db:"kills"`
 	Experience    int       `json:"experience" db:"experience"`
 	Perks         []Perk    `json:"perks" db:"perks"`
 }
@@ -44,6 +47,7 @@ type Unit struct {
 type Perk struct {
 	Name        string `json:"name" db:"name"`
 	Description string `json:"description" db:"description"`
+	IsScar      bool   `json:"is_scar" db:"is_scar"`
 }
 
 // Request Structs
@@ -54,7 +58,11 @@ type RegisterRequest struct {
 }
 
 type CreateWarbandRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name              string  `json:"name" binding:"required"`
+	Faction           *string `json:"faction"`
+	Description       *string `json:"description"`
+	RequisitionPoints *int    `json:"requisition_points"`
+	SupplyLimit       *int    `json:"supply_limit"`
 }
 
 type UpdateWarbandRequest struct {
@@ -63,4 +71,11 @@ type UpdateWarbandRequest struct {
 	Description       *string `json:"description"`
 	RequisitionPoints *int    `json:"requisition_points"`
 	SupplyLimit       *int    `json:"supply_limit"`
+}
+
+type CreateUnitRequest struct {
+	UnitName      string  `json:"unit_name" binding:"required"`
+	NarrativeName *string `json:"narrative_name"`
+	Bio           *string `json:"bio"`
+	Points        *int    `json:"points"`
 }

@@ -157,6 +157,7 @@ func DeleteWarband(id string, userID string) error {
 
 // Data Queries
 
+// Warband Utilities
 func GetAllWarbands(id string) ([]models.Warband, error) {
 	query := `
 		SELECT id, user_id, name, faction, description, units,
@@ -232,4 +233,61 @@ func GetWarbandByID(id string) (models.Warband, error) {
 	}
 
 	return w, nil
+}
+
+// Unit Utilities
+func GetWarbandByIDForOwner(id string, userID string) (models.Warband, error) {
+	var w models.Warband
+	var unitsJSON []byte
+
+	query := `
+		SELECT id, user_id, name, faction, description, units,
+		       num_units, total_points_cost, crusade_points,
+		       requisition_points, supply_limit, supply_cost,
+		       created_at, updated_at
+		FROM warbands
+		WHERE id = $1 AND user_id = $2
+	`
+
+	err := db.PGClient.QueryRow(context.Background(), query, id, userID).Scan(
+		&w.ID, &w.UserID, &w.Name, &w.Faction, &w.Description, &unitsJSON,
+		&w.NumUnits, &w.TotalPointsCost, &w.CrusadePoints,
+		&w.RequisitionPoints, &w.SupplyLimit, &w.SupplyCost,
+		&w.CreatedAt, &w.UpdatedAt,
+	)
+	if err != nil {
+		return models.Warband{}, err
+	}
+
+	if err := json.Unmarshal(unitsJSON, &w.Units); err != nil {
+		return models.Warband{}, err
+	}
+
+	return w, nil
+}
+
+func SaveWarband(warband models.Warband) error {
+	unitsJSON, err := json.Marshal(warband.Units)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		UPDATE warbands
+		SET units = $1, num_units = $2, total_points_cost = $3, updated_at = $4
+		WHERE id = $5 AND user_id = $6
+	`
+
+	tag, err := db.PGClient.Exec(context.Background(), query,
+		unitsJSON, warband.NumUnits, warband.TotalPointsCost, warband.UpdatedAt,
+		warband.ID, warband.UserID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
 }

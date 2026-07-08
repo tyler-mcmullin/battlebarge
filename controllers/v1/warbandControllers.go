@@ -44,6 +44,19 @@ func CreateWarband(c *gin.Context) {
 		UpdatedAt:         now,
 	}
 
+	if req.Faction != nil {
+		warband.Faction = *req.Faction
+	}
+	if req.Description != nil {
+		warband.Description = *req.Description
+	}
+	if req.RequisitionPoints != nil {
+		warband.RequisitionPoints = *req.RequisitionPoints
+	}
+	if req.SupplyLimit != nil {
+		warband.SupplyLimit = *req.SupplyLimit
+	}
+
 	if err := repositories.CreateWarband(warband); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -91,3 +91,168 @@ func GetUnit(c *gin.Context) {
 
 	c.JSON(http.StatusOK, unit)
 }
+
+func DeleteUnit(c *gin.Context) {
+	id := c.Param("id")
+	uid := c.GetString(middleware.ContextUIDKey)
+	if uid == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+
+	existing, err := repositories.GetUnitByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !owns {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
+
+	if err := repositories.DeleteUnit(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete unit"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func UpdateUnit(c *gin.Context) {
+	id := c.Param("id")
+	uid := c.GetString(middleware.ContextUIDKey)
+	if uid == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+
+	var req models.UpdateUnitRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	existing, err := repositories.GetUnitByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !owns {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
+
+	unit, err := repositories.UpdateUnit(id, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, unit)
+}
+
+func AddUnitKills(c *gin.Context) {
+	id := c.Param("id")
+	uid := c.GetString(middleware.ContextUIDKey)
+	if uid == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+
+	var req models.IncrementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	existing, err := repositories.GetUnitByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !owns {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
+
+	unit, err := repositories.IncrementUnitKills(id, req.Amount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, unit)
+}
+
+func AddUnitXP(c *gin.Context) {
+	id := c.Param("id")
+	uid := c.GetString(middleware.ContextUIDKey)
+	if uid == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+
+	var req models.IncrementRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	existing, err := repositories.GetUnitByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !owns {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
+
+	unit, err := repositories.IncrementUnitXP(id, req.Amount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, unit)
+}

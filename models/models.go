@@ -82,3 +82,14 @@ type CreateUnitRequest struct {
 	Bio           *string `json:"bio"`
 	Points        *int    `json:"points"`
 }
+
+type UpdateUnitRequest struct {
+	UnitName      *string `json:"unit_name"`
+	NarrativeName *string `json:"narrative_name"`
+	Bio           *string `json:"bio"`
+	Points        *int    `json:"points"`
+}
+
+type IncrementRequest struct {
+	Amount int `json:"amount" binding:"required"`
+}

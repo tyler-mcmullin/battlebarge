@@ -153,6 +153,21 @@ func DeleteWarband(id string, userID string) error {
 	return nil
 }
 
+func DeleteUnit(id string) error {
+	query := `DELETE FROM units WHERE id = $1`
+
+	tag, err := db.PGClient.Exec(context.Background(), query, id)
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	return nil
+}
+
 // Data Queries
 
 // Warband Utilities
@@ -381,6 +396,93 @@ func GetUnitByID(id string) (models.Unit, error) {
 	`
 
 	err := db.PGClient.QueryRow(context.Background(), query, id).Scan(
+		&u.ID, &u.WarbandID, &u.UnitName, &u.NarrativeName, &u.Bio,
+		&u.Points, &u.Kills, &u.Experience, &perksJSON, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		return models.Unit{}, err
+	}
+
+	if err := json.Unmarshal(perksJSON, &u.Perks); err != nil {
+		return models.Unit{}, err
+	}
+
+	return u, nil
+}
+
+func UpdateUnit(id string, req models.UpdateUnitRequest) (models.Unit, error) {
+	query := `
+		UPDATE units
+		SET unit_name = COALESCE($1, unit_name),
+		    narrative_name = COALESCE($2, narrative_name),
+		    bio = COALESCE($3, bio),
+		    points = COALESCE($4, points),
+		    updated_at = now()
+		WHERE id = $5
+		RETURNING id, warband_id, unit_name, narrative_name, bio,
+		          points, kills, experience, perks, created_at, updated_at
+	`
+
+	var u models.Unit
+	var perksJSON []byte
+
+	err := db.PGClient.QueryRow(context.Background(), query,
+		req.UnitName, req.NarrativeName, req.Bio, req.Points, id,
+	).Scan(
+		&u.ID, &u.WarbandID, &u.UnitName, &u.NarrativeName, &u.Bio,
+		&u.Points, &u.Kills, &u.Experience, &perksJSON, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		return models.Unit{}, err
+	}
+
+	if err := json.Unmarshal(perksJSON, &u.Perks); err != nil {
+		return models.Unit{}, err
+	}
+
+	return u, nil
+}
+
+func IncrementUnitKills(id string, amount int) (models.Unit, error) {
+	query := `
+		UPDATE units
+		SET kills = GREATEST(kills + $1, 0), updated_at = now()
+		WHERE id = $2
+		RETURNING id, warband_id, unit_name, narrative_name, bio,
+		          points, kills, experience, perks, created_at, updated_at
+	`
+
+	var u models.Unit
+	var perksJSON []byte
+
+	err := db.PGClient.QueryRow(context.Background(), query, amount, id).Scan(
+		&u.ID, &u.WarbandID, &u.UnitName, &u.NarrativeName, &u.Bio,
+		&u.Points, &u.Kills, &u.Experience, &perksJSON, &u.CreatedAt, &u.UpdatedAt,
+	)
+	if err != nil {
+		return models.Unit{}, err
+	}
+
+	if err := json.Unmarshal(perksJSON, &u.Perks); err != nil {
+		return models.Unit{}, err
+	}
+
+	return u, nil
+}
+
+func IncrementUnitXP(id string, amount int) (models.Unit, error) {
+	query := `
+		UPDATE units
+		SET experience = GREATEST(experience + $1, 0), updated_at = now()
+		WHERE id = $2
+		RETURNING id, warband_id, unit_name, narrative_name, bio,
+		          points, kills, experience, perks, created_at, updated_at
+	`
+
+	var u models.Unit
+	var perksJSON []byte
+
+	err := db.PGClient.QueryRow(context.Background(), query, amount, id).Scan(
 		&u.ID, &u.WarbandID, &u.UnitName, &u.NarrativeName, &u.Bio,
 		&u.Points, &u.Kills, &u.Experience, &perksJSON, &u.CreatedAt, &u.UpdatedAt,
 	)

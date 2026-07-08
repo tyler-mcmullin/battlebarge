@@ -20,4 +20,6 @@ func GetWarbandControllers(r *gin.Engine) {
 	priv.POST("/create", controllers.CreateWarband)
 	priv.PATCH("/:id", controllers.UpdateWarband)
 	priv.DELETE("/:id", controllers.DeleteWarband)
+
+	priv.POST("/:id/units", controllers.AddUnit)
 }

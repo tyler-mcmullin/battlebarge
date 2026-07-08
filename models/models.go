@@ -38,7 +38,6 @@ type Unit struct {
 	NarrativeName string    `json:"narrative_name" db:"narrative_name"`
 	Bio           string    `json:"bio" db:"bio"`
 	Points        int       `json:"points" db:"points"`
-	XP            int       `json:"xp" db:"xp"`
 	Kills         int       `json:"kills" db:"kills"`
 	Experience    int       `json:"experience" db:"experience"`
 	Perks         []Perk    `json:"perks" db:"perks"`

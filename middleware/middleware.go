@@ -54,7 +54,7 @@ func LoadUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uid := c.GetString(ContextUIDKey)
 		if uid == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context - is RequireAuth chained before LoadUser?"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context my require RequireAuth chained before LoadUser"})
 			return
 		}
 

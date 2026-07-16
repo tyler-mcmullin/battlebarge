@@ -7,7 +7,9 @@ import (
 )
 
 // Arguments: gin router
+//
 // Returns: None
+//
 // Gets auth controllers
 func GetAuthControllers(r *gin.Engine) {
 	group := r.Group("/auth")

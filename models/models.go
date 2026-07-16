@@ -95,3 +95,9 @@ type UpdateUnitRequest struct {
 type IncrementRequest struct {
 	Amount int `json:"amount" binding:"required"`
 }
+
+type AddPerkRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description" binding:"required"`
+	IsScar      bool   `json:"is_scar"`
+}

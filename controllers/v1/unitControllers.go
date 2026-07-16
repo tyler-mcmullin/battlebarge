@@ -256,3 +256,46 @@ func AddUnitXP(c *gin.Context) {
 
 	c.JSON(http.StatusOK, unit)
 }
+
+func AddUnitPerk(c *gin.Context) {
+	id := c.Param("id")
+	uid := c.GetString(middleware.ContextUIDKey)
+	if uid == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+
+	var req models.AddPerkRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	existing, err := repositories.GetUnitByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !owns {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
+
+	unit, err := repositories.AddUnitPerk(id, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, unit)
+}

@@ -9,6 +9,9 @@ import (
 
 var AuthClient *auth.Client
 
+// Arguments: Firebase project ID
+// Returns: None
+// Connects to firebase 
 func ConnectFirebase(projectID string) error {
 	ctx := context.Background()
 

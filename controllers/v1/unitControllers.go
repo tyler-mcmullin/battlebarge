@@ -270,6 +270,7 @@ func AddUnitPerk(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
+	req.ID = uuid.New()
 
 	existing, err := repositories.GetUnitByID(id)
 	if err != nil {
@@ -294,6 +295,48 @@ func AddUnitPerk(c *gin.Context) {
 	unit, err := repositories.AddUnitPerk(id, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, unit)
+}
+
+func DeleteUnitPerk(c *gin.Context) {
+	id := c.Param("id")
+	perkID := c.Param("perkId")
+	uid := c.GetString(middleware.ContextUIDKey)
+	if uid == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+
+	existing, err := repositories.GetUnitByID(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !owns {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
+
+	unit, err := repositories.DeleteUnitPerk(id, perkID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "perk not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete perk"})
 		return
 	}
 

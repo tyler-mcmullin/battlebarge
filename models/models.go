@@ -49,9 +49,10 @@ type Unit struct {
 }
 
 type Perk struct {
-	Name        string `json:"name" db:"name"`
-	Description string `json:"description" db:"description"`
-	IsScar      bool   `json:"is_scar" db:"is_scar"`
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	IsScar      bool      `json:"is_scar"`
 }
 
 // Request Structs
@@ -97,7 +98,8 @@ type IncrementRequest struct {
 }
 
 type AddPerkRequest struct {
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description" binding:"required"`
-	IsScar      bool   `json:"is_scar"`
+	ID          uuid.UUID `json:"perk_id"`
+	Name        string    `json:"name" binding:"required"`
+	Description *string   `json:"description"`
+	IsScar      bool      `json:"is_scar"`
 }

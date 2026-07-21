@@ -26,4 +26,6 @@ func GetUnitControllers(r *gin.Engine) {
 	priv.PATCH("/:id", controllers.UpdateUnit)
 	priv.PATCH("/:id/kills", controllers.AddUnitKills)
 	priv.PATCH("/:id/xp", controllers.AddUnitXP)
+	priv.PATCH("/:id/perk", controllers.AddUnitPerk)
+	priv.DELETE("/:id/perk/:perkId", controllers.DeleteUnitPerk)
 }

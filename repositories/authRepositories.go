@@ -10,9 +10,6 @@ import (
 	"battlebarge/models"
 )
 
-// USER FUNCTIONS
-
-// DB Insertions
 func CreateUser(user models.User) error {
 	query := `
 		INSERT INTO users (id, email, username, created_at, updated_at)
@@ -32,7 +29,6 @@ func CreateUser(user models.User) error {
 	return err
 }
 
-// DB Queries
 func GetUserByID(id string) (models.User, error) {
 	query := `
 		SELECT id, email, username, created_at, updated_at 

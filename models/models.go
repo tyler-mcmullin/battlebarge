@@ -55,6 +55,34 @@ type Perk struct {
 	IsScar      bool      `json:"is_scar"`
 }
 
+type CampaignSettings struct {
+	NumberOfTeams       int `json:"number_of_teams"`
+	PointsPerWin        int `json:"points_per_win"`
+	PointsPerLoss       int `json:"points_per_loss"`
+	StartingRequisition int `json:"starting_requisition"`
+}
+
+type Campaign struct {
+	ID          uuid.UUID         `json:"id"`
+	OwnerID     string            `json:"owner_id"`
+	Name        string            `json:"name"`
+	Description string            `json:"description"`
+	Settings    CampaignSettings  `json:"settings"`
+	Chapters    []CampaignChapter `json:"chapters"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
+}
+
+type CampaignChapter struct {
+	ID          uuid.UUID `json:"id"`
+	CampaignID  uuid.UUID `json:"campaign_id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	SortOrder   int       `json:"sort_order"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 // Request Structs
 type RegisterRequest struct {
 	Email    string `json:"email"`

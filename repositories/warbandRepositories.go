@@ -1,7 +1,7 @@
 package repositories
 
-// Repositories package handles database insertions and queries
-// Functions called by controllers as needed
+// warbandRepositories
+// Handles database interactions used by warbadControllers
 
 import (
 	"context"

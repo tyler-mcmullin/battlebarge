@@ -1,7 +1,7 @@
 package repositories
 
-// Repositories package handles database insertions and queries
-// Functions called by controllers as needed
+// unitRepositories
+// Handles database interactions used by unitControllers
 
 import (
 	"context"

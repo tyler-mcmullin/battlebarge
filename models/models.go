@@ -56,21 +56,24 @@ type Perk struct {
 }
 
 type CampaignSettings struct {
-	NumberOfTeams       int `json:"number_of_teams"`
 	PointsPerWin        int `json:"points_per_win"`
 	PointsPerLoss       int `json:"points_per_loss"`
 	StartingRequisition int `json:"starting_requisition"`
 }
 
 type Campaign struct {
-	ID          uuid.UUID         `json:"id"`
-	OwnerID     string            `json:"owner_id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Settings    CampaignSettings  `json:"settings"`
-	Chapters    []CampaignChapter `json:"chapters"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	ID          uuid.UUID        `json:"id"`
+	OwnerID     string           `json:"owner_id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Settings    CampaignSettings `json:"settings"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+
+	// Populated at fetch time from their own tables.
+	Chapters []CampaignChapter `json:"chapters"`
+	Teams    []CampaignTeam    `json:"teams"`
+	Warbands []CampaignWarband `json:"warbands"`
 }
 
 type CampaignChapter struct {
@@ -81,6 +84,25 @@ type CampaignChapter struct {
 	SortOrder   int       `json:"sort_order"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// CampaignTeam is a named team within one campaign. A campaign can have any
+// number of teams, and teams can be renamed.
+type CampaignTeam struct {
+	ID         uuid.UUID `json:"id"`
+	CampaignID uuid.UUID `json:"campaign_id"`
+	Name       string    `json:"name"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+// CampaignWarband is a warband's membership in a campaign: which team it is on.
+type CampaignWarband struct {
+	CampaignID  uuid.UUID `json:"campaign_id"`
+	WarbandID   uuid.UUID `json:"warband_id"`
+	WarbandName string    `json:"warband_name"`
+	TeamID      uuid.UUID `json:"team_id"`
+	JoinedAt    time.Time `json:"joined_at"`
 }
 
 // Request Structs
@@ -130,4 +152,45 @@ type AddPerkRequest struct {
 	Name        string    `json:"name" binding:"required"`
 	Description *string   `json:"description"`
 	IsScar      bool      `json:"is_scar"`
+}
+
+type CreateCampaignRequest struct {
+	Name                string  `json:"name" binding:"required"`
+	Description         *string `json:"description"`
+	PointsPerWin        *int    `json:"points_per_win"`
+	PointsPerLoss       *int    `json:"points_per_loss"`
+	StartingRequisition *int    `json:"starting_requisition"`
+}
+
+type UpdateCampaignRequest struct {
+	Name                *string `json:"name"`
+	Description         *string `json:"description"`
+	PointsPerWin        *int    `json:"points_per_win"`
+	PointsPerLoss       *int    `json:"points_per_loss"`
+	StartingRequisition *int    `json:"starting_requisition"`
+}
+
+type CreateChapterRequest struct {
+	Title       string  `json:"title" binding:"required"`
+	Description *string `json:"description"`
+	SortOrder   *int    `json:"sort_order"`
+}
+
+type UpdateChapterRequest struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	SortOrder   *int    `json:"sort_order"`
+}
+
+type TeamRequest struct {
+	Name string `json:"name" binding:"required,max=50"`
+}
+
+type JoinCampaignRequest struct {
+	WarbandID string `json:"warband_id" binding:"required"`
+	TeamID    string `json:"team_id" binding:"required"`
+}
+
+type ChangeTeamRequest struct {
+	TeamID string `json:"team_id" binding:"required"`
 }

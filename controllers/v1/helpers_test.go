@@ -49,6 +49,21 @@ func newRouter() *gin.Engine {
 	r.PATCH("/units/:id/perk", controllers.AddUnitPerk)
 	r.DELETE("/units/:id/perk/:perkId", controllers.DeleteUnitPerk)
 
+	r.GET("/campaigns", controllers.GetMyCampaigns)
+	r.GET("/campaigns/:id", controllers.GetCampaign)
+	r.POST("/campaigns/create", controllers.CreateCampaign)
+	r.PATCH("/campaigns/:id", controllers.UpdateCampaign)
+	r.DELETE("/campaigns/:id", controllers.DeleteCampaign)
+	r.POST("/campaigns/:id/chapters", controllers.CreateChapter)
+	r.PATCH("/campaigns/:id/chapters/:chapterId", controllers.UpdateChapter)
+	r.DELETE("/campaigns/:id/chapters/:chapterId", controllers.DeleteChapter)
+	r.POST("/campaigns/:id/teams", controllers.CreateTeam)
+	r.PATCH("/campaigns/:id/teams/:teamId", controllers.RenameTeam)
+	r.DELETE("/campaigns/:id/teams/:teamId", controllers.DeleteTeam)
+	r.POST("/campaigns/:id/warbands", controllers.JoinCampaign)
+	r.PATCH("/campaigns/:id/warbands/:warbandId", controllers.ChangeWarbandTeam)
+	r.DELETE("/campaigns/:id/warbands/:warbandId", controllers.LeaveCampaign)
+
 	return r
 }
 
@@ -99,4 +114,13 @@ func countJSONArray(t *testing.T, body []byte) int {
 		t.Fatalf("decode array: %v; body: %s", err, body)
 	}
 	return len(arr)
+}
+
+func decodeCampaign(t *testing.T, w *httptest.ResponseRecorder) models.Campaign {
+	t.Helper()
+	var out models.Campaign
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode campaign: %v; body: %s", err, w.Body.String())
+	}
+	return out
 }

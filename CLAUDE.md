@@ -13,7 +13,7 @@ Battlebarge is a Go (Gin) REST API for tracking tabletop-wargame warbands, units
 - Tests: `go test ./...`; single test: `go test ./repositories -run TestAddAndDeleteUnitPerk`. Database tests create a throwaway schema in the Postgres named by `TEST_POSTGRES_URL` (e.g. `postgres://user@localhost:5432/bbtest`) and skip when it is unset. Tests sit beside the code they test; shared database fixtures are in `testutil/`. The table definitions live in `testutil/db.go` (`schemaSQL`) and must be kept in sync with the real schema. Controller tests use the real handlers with a fake auth middleware (`X-Test-UID` header); Firebase itself is never called.
 - Firebase emulators (Auth on 9099, Firestore on 8000, UI enabled): `firebase emulators:start`
 - `.env` (gitignored) needs `FIREBASE_PROJECT_ID`, `POSTGRES_URL`, and for local dev `FIREBASE_AUTH_EMULATOR_HOST` / `FIRESTORE_EMULATOR_HOST`. `testlogin.html` (gitignored) is a local helper for obtaining ID tokens.
-- The Postgres schema is not in the repo; the SQL in `repositories/` is the source of truth for table/column names. `db/migrations/` holds hand-run SQL files (currently only the unit_perks migration).
+- The Postgres schema is not in the repo; the SQL in `repositories/` is the source of truth for table/column names. `db/migrations/` holds hand-run SQL files (001 unit_perks, 002 campaigns; run each once, manually).
 
 ## Architecture
 
@@ -26,7 +26,7 @@ Layered, with one file per resource in each layer (`auth`, `user`, `warband`, `u
 - `middleware/`: `RequireAuth()` verifies the Firebase Bearer token and sets `uid` in the Gin context (`middleware.ContextUIDKey`). `LoadUser()` (must be chained after `RequireAuth`) additionally loads the full `models.User` from Postgres into context (`ContextUserKey`). Use `RequireAuth` alone unless profile data is needed.
 - `controllers/v1/`: bind JSON into request structs from `models/`, read the uid from context, enforce ownership (e.g. `repositories.IsWarbandOwner` before creating a unit; returns 404 rather than 403 for non-owned resources), then call repositories.
 - `repositories/`: raw SQL via pgx, no ORM. `Unit.Perks` lives in its own `unit_perks` table (FK to `units`, ON DELETE CASCADE); unit repository functions load perks after fetching units.
-- `models/models.go`: all domain structs and request DTOs in one file. Campaign structs (`CampaignSettings`, `Campaign`, `CampaignChapter`) exist but have no routes/repositories yet.
+- `models/models.go`: all domain structs and request DTOs in one file. Campaigns: a campaign has chapters, any number of named/renamable teams, and member warbands (`campaign_warbands`, one team per warband per campaign; a warband can be in many campaigns). Anyone with a campaign ID can join a warband they own; only the campaign owner manages chapters and teams; the campaign owner or warband owner can move/remove a member. A team with warbands on it cannot be deleted (409).
 - IDs are `uuid.UUID` generated in controllers, except users, whose ID is the Firebase UID string.
 
 ## Documentation convention

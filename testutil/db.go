@@ -14,9 +14,10 @@ import (
 	"battlebarge/models"
 )
 
-// schemaSQL mirrors the tables the repositories expect. Copied from a pg_dump of
-// the real database (the repo keeps no schema file). Keep it in sync when the
-// real schema changes.
+// schemaSQL mirrors the tables the repositories expect. The users, warbands,
+// units and unit_perks tables are copied from a pg_dump of the real database;
+// the campaign tables come from db/migrations/002_campaigns.sql. The repo keeps
+// no schema file, so keep this in sync when the real schema changes.
 const schemaSQL = `
 CREATE TABLE users (
 	id         varchar(128) PRIMARY KEY,
@@ -61,6 +62,57 @@ CREATE TABLE unit_perks (
 );
 
 CREATE INDEX unit_perks_unit_id_idx ON unit_perks (unit_id);
+
+CREATE TABLE campaigns (
+	id                   uuid PRIMARY KEY,
+	owner_id             varchar(128) NOT NULL REFERENCES users(id),
+	name                 text NOT NULL,
+	description          text NOT NULL DEFAULT '',
+	points_per_win       integer NOT NULL DEFAULT 0,
+	points_per_loss      integer NOT NULL DEFAULT 0,
+	starting_requisition integer NOT NULL DEFAULT 0,
+	created_at           timestamptz NOT NULL DEFAULT now(),
+	updated_at           timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX campaigns_owner_id_idx ON campaigns (owner_id);
+
+CREATE TABLE campaign_chapters (
+	id          uuid PRIMARY KEY,
+	campaign_id uuid NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+	title       text NOT NULL,
+	description text NOT NULL DEFAULT '',
+	sort_order  integer NOT NULL DEFAULT 0,
+	created_at  timestamptz NOT NULL DEFAULT now(),
+	updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX campaign_chapters_campaign_id_idx ON campaign_chapters (campaign_id);
+
+CREATE TABLE campaign_teams (
+	id          uuid PRIMARY KEY,
+	campaign_id uuid NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+	name        text NOT NULL,
+	created_at  timestamptz NOT NULL DEFAULT now(),
+	updated_at  timestamptz NOT NULL DEFAULT now(),
+	UNIQUE (campaign_id, name),
+	-- lets campaign_warbands prove a team belongs to the same campaign
+	UNIQUE (id, campaign_id)
+);
+
+-- A warband can be in many campaigns, once each, on exactly one team per
+-- campaign. A team with warbands on it cannot be deleted (no ON DELETE
+-- action on the team FK).
+CREATE TABLE campaign_warbands (
+	campaign_id uuid NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+	warband_id  uuid NOT NULL REFERENCES warbands(id) ON DELETE CASCADE,
+	team_id     uuid NOT NULL,
+	joined_at   timestamptz NOT NULL DEFAULT now(),
+	PRIMARY KEY (campaign_id, warband_id),
+	FOREIGN KEY (team_id, campaign_id) REFERENCES campaign_teams (id, campaign_id)
+);
+
+CREATE INDEX campaign_warbands_warband_id_idx ON campaign_warbands (warband_id);
 `
 
 // Arguments: t (*testing.T) - the running test
@@ -195,4 +247,42 @@ func InsertUnit(t *testing.T, warbandID uuid.UUID, name string, points int) mode
 		t.Fatalf("insert unit: %v", err)
 	}
 	return u
+}
+
+// Arguments: t (*testing.T) - the running test; ownerID (string) - owning user ID; name (string) - campaign name
+//
+// Returns: models.Campaign - the inserted campaign (without chapters, teams, or warbands)
+//
+// Inserts a campaign directly into the test database
+func InsertCampaign(t *testing.T, ownerID, name string) models.Campaign {
+	t.Helper()
+
+	now := time.Now()
+	c := models.Campaign{ID: uuid.New(), OwnerID: ownerID, Name: name, CreatedAt: now, UpdatedAt: now}
+	_, err := db.PGClient.Exec(context.Background(),
+		`INSERT INTO campaigns (id, owner_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+		c.ID, c.OwnerID, c.Name, c.CreatedAt, c.UpdatedAt)
+	if err != nil {
+		t.Fatalf("insert campaign: %v", err)
+	}
+	return c
+}
+
+// Arguments: t (*testing.T) - the running test; campaignID (uuid.UUID) - owning campaign; name (string) - team name
+//
+// Returns: models.CampaignTeam - the inserted team
+//
+// Inserts a campaign team directly into the test database
+func InsertTeam(t *testing.T, campaignID uuid.UUID, name string) models.CampaignTeam {
+	t.Helper()
+
+	now := time.Now()
+	team := models.CampaignTeam{ID: uuid.New(), CampaignID: campaignID, Name: name, CreatedAt: now, UpdatedAt: now}
+	_, err := db.PGClient.Exec(context.Background(),
+		`INSERT INTO campaign_teams (id, campaign_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
+		team.ID, team.CampaignID, team.Name, team.CreatedAt, team.UpdatedAt)
+	if err != nil {
+		t.Fatalf("insert team: %v", err)
+	}
+	return team
 }

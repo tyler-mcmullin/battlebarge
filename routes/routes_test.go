@@ -15,6 +15,7 @@ func TestRoutesRegistered(t *testing.T) {
 	routes.GetUserControllers(r)
 	routes.GetWarbandControllers(r)
 	routes.GetUnitControllers(r)
+	routes.GetCampaignControllers(r)
 
 	want := []string{
 		"POST /auth/register",
@@ -32,6 +33,20 @@ func TestRoutesRegistered(t *testing.T) {
 		"PATCH /units/:id/xp",
 		"PATCH /units/:id/perk",
 		"DELETE /units/:id/perk/:perkId",
+		"GET /campaigns",
+		"GET /campaigns/:id",
+		"POST /campaigns/create",
+		"PATCH /campaigns/:id",
+		"DELETE /campaigns/:id",
+		"POST /campaigns/:id/chapters",
+		"PATCH /campaigns/:id/chapters/:chapterId",
+		"DELETE /campaigns/:id/chapters/:chapterId",
+		"POST /campaigns/:id/teams",
+		"PATCH /campaigns/:id/teams/:teamId",
+		"DELETE /campaigns/:id/teams/:teamId",
+		"POST /campaigns/:id/warbands",
+		"PATCH /campaigns/:id/warbands/:warbandId",
+		"DELETE /campaigns/:id/warbands/:warbandId",
 	}
 
 	got := map[string]bool{}
@@ -57,6 +72,7 @@ func TestProtectedRoutesRequireAuth(t *testing.T) {
 	routes.GetUserControllers(r)
 	routes.GetWarbandControllers(r)
 	routes.GetUnitControllers(r)
+	routes.GetCampaignControllers(r)
 
 	protected := []struct{ method, path string }{
 		{"GET", "/users/me"},
@@ -71,6 +87,19 @@ func TestProtectedRoutesRequireAuth(t *testing.T) {
 		{"PATCH", "/units/abc/xp"},
 		{"PATCH", "/units/abc/perk"},
 		{"DELETE", "/units/abc/perk/def"},
+		{"GET", "/campaigns"},
+		{"POST", "/campaigns/create"},
+		{"PATCH", "/campaigns/abc"},
+		{"DELETE", "/campaigns/abc"},
+		{"POST", "/campaigns/abc/chapters"},
+		{"PATCH", "/campaigns/abc/chapters/def"},
+		{"DELETE", "/campaigns/abc/chapters/def"},
+		{"POST", "/campaigns/abc/teams"},
+		{"PATCH", "/campaigns/abc/teams/def"},
+		{"DELETE", "/campaigns/abc/teams/def"},
+		{"POST", "/campaigns/abc/warbands"},
+		{"PATCH", "/campaigns/abc/warbands/def"},
+		{"DELETE", "/campaigns/abc/warbands/def"},
 	}
 
 	for _, p := range protected {

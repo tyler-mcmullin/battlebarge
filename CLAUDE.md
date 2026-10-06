@@ -45,4 +45,5 @@ Gin handlers use `gin context` for arguments and list the HTTP method/path and r
 
 ## TODO
 
+- Production launch work is tracked in `PRODUCTION_CHECKLIST.md`. Update it when you finish an item or discover a new launch requirement.
 - Add Firebase Auth emulator tests (emulator config is in `firebase.json`, port 9099; skip when `FIREBASE_AUTH_EMULATOR_HOST` is unset, like the Postgres tests). Currently untested: a valid token being accepted by `RequireAuth`, the invalid/expired token branch, `LoadUser` with a verified token, and `RegisterUser` end to end (Firebase user creation, rollback when the Postgres insert fails, 409 on duplicate email). Controller tests use a fake `X-Test-UID` auth middleware instead of real token verification.

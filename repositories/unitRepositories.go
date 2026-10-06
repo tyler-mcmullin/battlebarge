@@ -83,7 +83,7 @@ func withPerks(u models.Unit) (models.Unit, error) {
 
 // Arguments: unit (models.Unit) - unit record to insert, including any initial perks
 //
-// Returns: error - non-nil if the unit or a perk insert fails (nothing is saved in that case)
+// Returns: error - ErrLimitReached if the warband already has MaxUnitsPerWarband units, or another error if the unit or a perk insert fails (nothing is saved in that case)
 //
 // Inserts a new unit row and its perks in a single transaction
 func CreateUnit(unit models.Unit) error {
@@ -94,6 +94,12 @@ func CreateUnit(unit models.Unit) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
+
+	err = lockAndCheckLimit(ctx, tx, "warbands", unit.WarbandID,
+		`SELECT count(*) FROM units WHERE warband_id = $1`, MaxUnitsPerWarband)
+	if err != nil {
+		return err
+	}
 
 	query := `
 		INSERT INTO units (
@@ -278,7 +284,7 @@ func IncrementUnitXP(id string, amount int) (models.Unit, error) {
 
 // Arguments: id (string) - unit ID; req (models.AddPerkRequest) - perk to add
 //
-// Returns: models.Unit - the updated unit with its perks; error - pgx.ErrNoRows if the unit is not found, or another error on failure
+// Returns: models.Unit - the updated unit with its perks; error - pgx.ErrNoRows if the unit is not found, ErrLimitReached if it already has MaxPerksPerUnit perks, or another error on failure
 //
 // Inserts a perk (or scar) into unit_perks and bumps the unit's updated_at, atomically
 func AddUnitPerk(id string, req models.AddPerkRequest) (models.Unit, error) {
@@ -296,6 +302,16 @@ func AddUnitPerk(id string, req models.AddPerkRequest) (models.Unit, error) {
 	}
 	if tag.RowsAffected() == 0 {
 		return models.Unit{}, pgx.ErrNoRows
+	}
+
+	// the UPDATE above holds the unit's row lock until commit, so the count is safe
+	var perkCount int
+	err = tx.QueryRow(ctx, `SELECT count(*) FROM unit_perks WHERE unit_id = $1`, id).Scan(&perkCount)
+	if err != nil {
+		return models.Unit{}, err
+	}
+	if perkCount >= MaxPerksPerUnit {
+		return models.Unit{}, ErrLimitReached
 	}
 
 	description := ""

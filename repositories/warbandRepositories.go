@@ -14,10 +14,24 @@ import (
 
 // Arguments: warband (models.Warband) - warband record to insert
 //
-// Returns: error - non-nil if the insert fails
+// Returns: error - ErrLimitReached if the user already has MaxWarbandsPerUser warbands, or another error if the insert fails
 //
 // Inserts a new warband row into the warbands table
 func CreateWarband(warband models.Warband) error {
+	ctx := context.Background()
+
+	tx, err := db.PGClient.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = lockAndCheckLimit(ctx, tx, "users", warband.UserID,
+		`SELECT count(*) FROM warbands WHERE user_id = $1`, MaxWarbandsPerUser)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO warbands (
 			id, user_id, name, faction, description,
@@ -27,8 +41,8 @@ func CreateWarband(warband models.Warband) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
-	_, err := db.PGClient.Exec(
-		context.Background(),
+	_, err = tx.Exec(
+		ctx,
 		query,
 		warband.ID,
 		warband.UserID,
@@ -40,8 +54,11 @@ func CreateWarband(warband models.Warband) error {
 		warband.CreatedAt,
 		warband.UpdatedAt,
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return tx.Commit(ctx)
 }
 
 // Arguments: id (string) - warband ID; userID (string) - ID of the owning user; req (models.UpdateWarbandRequest) - fields to change, nil fields are left as-is

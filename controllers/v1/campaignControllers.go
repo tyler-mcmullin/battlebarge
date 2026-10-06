@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -39,7 +40,7 @@ func requireCampaignOwner(c *gin.Context, campaignID string, uid string) bool {
 
 // Arguments: c (gin context)
 //
-// Returns: None (responds 201 with the campaign; 400 on bad input; 401 if unauthenticated)
+// Returns: None (responds 201 with the campaign; 400 on bad input; 401 if unauthenticated; 409 if the user already owns the maximum number of campaigns)
 //
 // POST /campaigns/create. Creates a campaign owned by the authenticated user, applying defaults for omitted settings
 func CreateCampaign(c *gin.Context) {
@@ -79,6 +80,10 @@ func CreateCampaign(c *gin.Context) {
 	}
 
 	if err := repositories.CreateCampaign(campaign); err != nil {
+		if errors.Is(err, repositories.ErrLimitReached) {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("limit reached: at most %d campaigns per user", repositories.MaxCampaignsPerUser)})
+			return
+		}
 		serverError(c, err)
 		return
 	}
@@ -194,7 +199,7 @@ func DeleteCampaign(c *gin.Context) {
 
 // Arguments: c (gin context)
 //
-// Returns: None (responds 201 with the chapter; 400 on bad input; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed)
+// Returns: None (responds 201 with the chapter; 400 on bad input; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed; 409 if the campaign already has the maximum number of chapters)
 //
 // POST /campaigns/:id/chapters. Adds a chapter to a campaign owned by the authenticated user, appended after the last chapter unless sort_order is given
 func CreateChapter(c *gin.Context) {
@@ -230,6 +235,10 @@ func CreateChapter(c *gin.Context) {
 
 	created, err := repositories.AddChapter(chapter, req.SortOrder == nil)
 	if err != nil {
+		if errors.Is(err, repositories.ErrLimitReached) {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("limit reached: at most %d chapters per campaign", repositories.MaxChaptersPerCampaign)})
+			return
+		}
 		serverError(c, err)
 		return
 	}
@@ -310,7 +319,7 @@ func DeleteChapter(c *gin.Context) {
 
 // Arguments: c (gin context)
 //
-// Returns: None (responds 201 with the team; 400 on bad input; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed; 409 if the campaign already has a team with that name)
+// Returns: None (responds 201 with the team; 400 on bad input; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed; 409 if the campaign already has a team with that name or the maximum number of teams)
 //
 // POST /campaigns/:id/teams. Adds a named team to a campaign owned by the authenticated user. A campaign can have any number of teams
 func CreateTeam(c *gin.Context) {
@@ -341,6 +350,10 @@ func CreateTeam(c *gin.Context) {
 	if err := repositories.CreateTeam(team); err != nil {
 		if pgErrCode(err) == "23505" {
 			c.JSON(http.StatusConflict, gin.H{"error": "team name already used in this campaign"})
+			return
+		}
+		if errors.Is(err, repositories.ErrLimitReached) {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("limit reached: at most %d teams per campaign", repositories.MaxTeamsPerCampaign)})
 			return
 		}
 		serverError(c, err)
@@ -431,7 +444,7 @@ func DeleteTeam(c *gin.Context) {
 
 // Arguments: c (gin context)
 //
-// Returns: None (responds 201 with the updated campaign; 400 on bad input or malformed warband_id/team_id; 401 if unauthenticated; 404 if the campaign id is malformed, the warband is not owned by the user, or the team is not in the campaign; 409 if the warband is already in the campaign)
+// Returns: None (responds 201 with the updated campaign; 400 on bad input or malformed warband_id/team_id; 401 if unauthenticated; 404 if the campaign id is malformed, the warband is not owned by the user, or the team is not in the campaign; 409 if the warband is already in the campaign or the campaign has the maximum number of warbands)
 //
 // POST /campaigns/:id/warbands. Joins a warband owned by the authenticated user to a campaign on one of its teams. Anyone who knows the campaign ID can join
 func JoinCampaign(c *gin.Context) {
@@ -472,6 +485,10 @@ func JoinCampaign(c *gin.Context) {
 		}
 		if pgErrCode(err) == "23505" {
 			c.JSON(http.StatusConflict, gin.H{"error": "warband already in this campaign"})
+			return
+		}
+		if errors.Is(err, repositories.ErrLimitReached) {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("limit reached: at most %d warbands per campaign", repositories.MaxWarbandsPerCampaign)})
 			return
 		}
 		serverError(c, err)

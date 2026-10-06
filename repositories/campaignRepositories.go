@@ -66,10 +66,24 @@ func withCampaignDetails(c models.Campaign) (models.Campaign, error) {
 
 // Arguments: campaign (models.Campaign) - campaign record to insert
 //
-// Returns: error - non-nil if the insert fails
+// Returns: error - ErrLimitReached if the owner already has MaxCampaignsPerUser campaigns, or another error if the insert fails
 //
 // Inserts a new campaign row
 func CreateCampaign(campaign models.Campaign) error {
+	ctx := context.Background()
+
+	tx, err := db.PGClient.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = lockAndCheckLimit(ctx, tx, "users", campaign.OwnerID,
+		`SELECT count(*) FROM campaigns WHERE owner_id = $1`, MaxCampaignsPerUser)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO campaigns (
 			id, owner_id, name, description,
@@ -79,13 +93,16 @@ func CreateCampaign(campaign models.Campaign) error {
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
-	_, err := db.PGClient.Exec(context.Background(), query,
+	_, err = tx.Exec(ctx, query,
 		campaign.ID, campaign.OwnerID, campaign.Name, campaign.Description,
 		campaign.Settings.PointsPerWin, campaign.Settings.PointsPerLoss, campaign.Settings.StartingRequisition,
 		campaign.CreatedAt, campaign.UpdatedAt,
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return tx.Commit(ctx)
 }
 
 // Arguments: id (string) - campaign ID
@@ -254,10 +271,24 @@ func GetChaptersByCampaignID(campaignID string) ([]models.CampaignChapter, error
 
 // Arguments: chapter (models.CampaignChapter) - chapter to insert; autoOrder (bool) - when true, ignore chapter.SortOrder and append after the last chapter
 //
-// Returns: models.CampaignChapter - the inserted chapter with its final sort_order; error - on insert failure (e.g. unknown campaign)
+// Returns: models.CampaignChapter - the inserted chapter with its final sort_order; error - pgx.ErrNoRows if the campaign does not exist, ErrLimitReached if it already has MaxChaptersPerCampaign chapters, or another error on failure
 //
 // Inserts a chapter into a campaign
 func AddChapter(chapter models.CampaignChapter, autoOrder bool) (models.CampaignChapter, error) {
+	ctx := context.Background()
+
+	tx, err := db.PGClient.Begin(ctx)
+	if err != nil {
+		return models.CampaignChapter{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	err = lockAndCheckLimit(ctx, tx, "campaigns", chapter.CampaignID,
+		`SELECT count(*) FROM campaign_chapters WHERE campaign_id = $1`, MaxChaptersPerCampaign)
+	if err != nil {
+		return models.CampaignChapter{}, err
+	}
+
 	query := `
 		INSERT INTO campaign_chapters (id, campaign_id, title, description, sort_order, created_at, updated_at)
 		VALUES (
@@ -271,13 +302,20 @@ func AddChapter(chapter models.CampaignChapter, autoOrder bool) (models.Campaign
 	`
 
 	var ch models.CampaignChapter
-	err := db.PGClient.QueryRow(context.Background(), query,
+	err = tx.QueryRow(ctx, query,
 		chapter.ID, chapter.CampaignID, chapter.Title, chapter.Description,
 		autoOrder, chapter.SortOrder,
 		chapter.CreatedAt, chapter.UpdatedAt,
 	).Scan(&ch.ID, &ch.CampaignID, &ch.Title, &ch.Description, &ch.SortOrder, &ch.CreatedAt, &ch.UpdatedAt)
+	if err != nil {
+		return models.CampaignChapter{}, err
+	}
 
-	return ch, err
+	if err := tx.Commit(ctx); err != nil {
+		return models.CampaignChapter{}, err
+	}
+
+	return ch, nil
 }
 
 // Arguments: campaignID (string) - campaign ID; chapterID (string) - chapter ID; req (models.UpdateChapterRequest) - fields to change, nil fields are left as-is
@@ -356,20 +394,37 @@ func GetTeamsByCampaignID(campaignID string) ([]models.CampaignTeam, error) {
 
 // Arguments: team (models.CampaignTeam) - team to insert
 //
-// Returns: error - SQLSTATE 23505 if the campaign already has a team with that name, or another error on failure
+// Returns: error - SQLSTATE 23505 if the campaign already has a team with that name, ErrLimitReached if it already has MaxTeamsPerCampaign teams, or another error on failure
 //
 // Inserts a team into a campaign
 func CreateTeam(team models.CampaignTeam) error {
+	ctx := context.Background()
+
+	tx, err := db.PGClient.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = lockAndCheckLimit(ctx, tx, "campaigns", team.CampaignID,
+		`SELECT count(*) FROM campaign_teams WHERE campaign_id = $1`, MaxTeamsPerCampaign)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO campaign_teams (id, campaign_id, name, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
 	`
 
-	_, err := db.PGClient.Exec(context.Background(), query,
+	_, err = tx.Exec(ctx, query,
 		team.ID, team.CampaignID, team.Name, team.CreatedAt, team.UpdatedAt,
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return tx.Commit(ctx)
 }
 
 // Arguments: campaignID (string) - campaign ID; teamID (string) - team ID; name (string) - new team name
@@ -445,10 +500,24 @@ func GetCampaignWarbands(campaignID string) ([]models.CampaignWarband, error) {
 
 // Arguments: campaignID (string) - campaign ID; warbandID (string) - warband ID; teamID (string) - team to join
 //
-// Returns: error - pgx.ErrNoRows if the team is not in that campaign, SQLSTATE 23505 if the warband is already in the campaign, SQLSTATE 23503 if the warband does not exist
+// Returns: error - pgx.ErrNoRows if the campaign or team does not exist, ErrLimitReached if the campaign already has MaxWarbandsPerCampaign warbands, SQLSTATE 23505 if the warband is already in the campaign, SQLSTATE 23503 if the warband does not exist
 //
 // Adds a warband to a campaign on the given team
 func JoinCampaign(campaignID string, warbandID string, teamID string) error {
+	ctx := context.Background()
+
+	tx, err := db.PGClient.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = lockAndCheckLimit(ctx, tx, "campaigns", campaignID,
+		`SELECT count(*) FROM campaign_warbands WHERE campaign_id = $1`, MaxWarbandsPerCampaign)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO campaign_warbands (campaign_id, warband_id, team_id)
 		SELECT $1, $2, t.id
@@ -456,7 +525,7 @@ func JoinCampaign(campaignID string, warbandID string, teamID string) error {
 		WHERE t.id = $3 AND t.campaign_id = $1
 	`
 
-	tag, err := db.PGClient.Exec(context.Background(), query, campaignID, warbandID, teamID)
+	tag, err := tx.Exec(ctx, query, campaignID, warbandID, teamID)
 	if err != nil {
 		return err
 	}
@@ -464,7 +533,7 @@ func JoinCampaign(campaignID string, warbandID string, teamID string) error {
 		return pgx.ErrNoRows
 	}
 
-	return nil
+	return tx.Commit(ctx)
 }
 
 // Arguments: campaignID (string) - campaign ID; warbandID (string) - warband ID; teamID (string) - team to move to

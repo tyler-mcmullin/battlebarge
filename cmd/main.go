@@ -1,12 +1,19 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"golang.org/x/time/rate"
 
 	"battlebarge/db"
 	"battlebarge/middleware"
@@ -32,8 +39,19 @@ func main() {
 	//router setup
 	r := gin.Default()
 
+	//client IPs (used for rate limiting) are taken from the connection itself
+	//unless TRUSTED_PROXIES lists the proxies/load balancers allowed to set
+	//X-Forwarded-For. Without this, clients could fake their IP.
+	if err := r.SetTrustedProxies(splitList(os.Getenv("TRUSTED_PROXIES"))); err != nil {
+		panic(err)
+	}
+
 	//allow browser frontends on these origins (comma-separated)
 	r.Use(middleware.CORS(middleware.ParseOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))))
+
+	//cap request bodies at 64 KiB and each client IP at 20 requests/second (burst 60)
+	r.Use(middleware.MaxBodySize(64 << 10))
+	r.Use(middleware.RateLimit(rate.Limit(20), 60))
 
 	//get routes and controllers
 	routes.GetAuthControllers(r)
@@ -47,10 +65,51 @@ func main() {
 		port = "8080"
 	}
 
-	if err := r.Run(":" + port); err != nil {
-		panic(err)
+	//timeouts stop slow or stalled clients from holding connections open
+	srv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
+	serverErr := make(chan error, 1)
+	go func() { serverErr <- srv.ListenAndServe() }()
+
+	//on SIGINT/SIGTERM finish in-flight requests before exiting
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case err := <-serverErr:
+		panic(err)
+	case <-ctx.Done():
+		log.Println("shutting down")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown: %v", err)
+	}
+	db.PGClient.Close()
+}
+
+// Arguments: raw (string) - comma-separated values
+//
+// Returns: []string - the trimmed, non-empty values (an empty, non-nil slice if there are none)
+//
+// Splits a comma-separated environment variable such as TRUSTED_PROXIES
+func splitList(raw string) []string {
+	out := []string{}
+	for _, v := range strings.Split(raw, ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // Arguments: None

@@ -1,10 +1,16 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
+	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/time/rate"
 
 	"battlebarge/db"
 	"battlebarge/repositories"
@@ -14,6 +20,28 @@ const (
 	ContextUIDKey  = "uid"
 	ContextUserKey = "user"
 )
+
+// TokenVerifier verifies a Firebase ID token and returns its claims.
+type TokenVerifier func(ctx context.Context, idToken string) (*auth.Token, error)
+
+// verifyToken checks the token's signature and expiry and also that it has
+// not been revoked and its user is not disabled. The revocation check costs
+// one extra Firebase call per request, but means a revoked or disabled
+// account loses access immediately instead of when the token expires.
+var verifyToken TokenVerifier = func(ctx context.Context, idToken string) (*auth.Token, error) {
+	return db.AuthClient.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+}
+
+// Arguments: v (TokenVerifier) - the verifier RequireAuth should use
+//
+// Returns: func() - restores the previous verifier
+//
+// Replaces the token verifier so tests can run RequireAuth without Firebase
+func SetTokenVerifier(v TokenVerifier) func() {
+	prev := verifyToken
+	verifyToken = v
+	return func() { verifyToken = prev }
+}
 
 // RequireAuth verifies the Firebase ID token sent in the Authorization header
 // (format: "Bearer <token>") and attaches the verified UID to the request
@@ -34,9 +62,13 @@ func RequireAuth() gin.HandlerFunc {
 		}
 		idToken := parts[1]
 
-		token, err := db.AuthClient.VerifyIDToken(c.Request.Context(), idToken)
+		token, err := verifyToken(c.Request.Context(), idToken)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			msg := "invalid or expired token"
+			if auth.IsIDTokenRevoked(err) || auth.IsUserDisabled(err) {
+				msg = "token revoked"
+			}
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": msg})
 			return
 		}
 
@@ -131,6 +163,80 @@ func CORS(allowedOrigins []string) gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
 			c.Header("Access-Control-Max-Age", "600")
 			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// Arguments: maxBytes (int64) - largest request body to accept
+//
+// Returns: gin.HandlerFunc - the body size limit middleware
+//
+// Rejects requests whose declared Content-Length is over maxBytes with 413,
+// and caps the bytes read from bodies with no declared length (chunked), so a
+// client cannot make the server buffer an arbitrarily large body
+func MaxBodySize(maxBytes int64) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.ContentLength > maxBytes {
+			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request body too large"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)
+		c.Next()
+	}
+}
+
+type visitor struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+// Arguments: limit (rate.Limit) - sustained requests per second per client IP; burst (int) - how many requests a client may make at once
+//
+// Returns: gin.HandlerFunc - the rate limiting middleware
+//
+// Limits each client IP with a token bucket and responds 429 with a
+// Retry-After header when the bucket is empty. State is in memory, so it is
+// per server instance. The client IP comes from c.ClientIP(), so configure
+// trusted proxies correctly or all clients behind a proxy share one bucket.
+func RateLimit(limit rate.Limit, burst int) gin.HandlerFunc {
+	var mu sync.Mutex
+	visitors := map[string]*visitor{}
+	lastSweep := time.Now()
+
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		now := time.Now()
+
+		mu.Lock()
+		// drop clients not seen for 10 minutes, at most once a minute
+		if now.Sub(lastSweep) > time.Minute {
+			for k, v := range visitors {
+				if now.Sub(v.lastSeen) > 10*time.Minute {
+					delete(visitors, k)
+				}
+			}
+			lastSweep = now
+		}
+		v, ok := visitors[ip]
+		if !ok {
+			v = &visitor{limiter: rate.NewLimiter(limit, burst)}
+			visitors[ip] = v
+		}
+		v.lastSeen = now
+		res := v.limiter.Reserve()
+		delay := res.Delay()
+		if delay > 0 {
+			res.Cancel()
+		}
+		mu.Unlock()
+
+		if delay > 0 {
+			retry := int(delay.Seconds()) + 1
+			c.Header("Retry-After", strconv.Itoa(retry))
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
 			return
 		}
 

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 
 // Arguments: gin context
 //
-// Returns: None (responds 201 with the unit; 400 on bad input or a malformed warband_id; 401 if unauthenticated; 404 if the warband is not found or not owned)
+// Returns: None (responds 201 with the unit; 400 on bad input or a malformed warband_id; 401 if unauthenticated; 404 if the warband is not found or not owned; 409 if the warband already has the maximum number of units)
 //
 // POST /units/create. Creates a unit in a warband owned by the authenticated user
 func CreateUnit(c *gin.Context) {
@@ -75,6 +76,10 @@ func CreateUnit(c *gin.Context) {
 	}
 
 	if err := repositories.CreateUnit(unit); err != nil {
+		if errors.Is(err, repositories.ErrLimitReached) {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("limit reached: at most %d units per warband", repositories.MaxUnitsPerWarband)})
+			return
+		}
 		serverError(c, err)
 		return
 	}
@@ -310,7 +315,7 @@ func AddUnitXP(c *gin.Context) {
 
 // Arguments: gin context
 //
-// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed)
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed; 409 if the unit already has the maximum number of perks)
 //
 // PATCH /units/:id/perk. Adds a perk or scar with a newly generated ID to a unit
 func AddUnitPerk(c *gin.Context) {
@@ -354,6 +359,10 @@ func AddUnitPerk(c *gin.Context) {
 
 	unit, err := repositories.AddUnitPerk(id, req)
 	if err != nil {
+		if errors.Is(err, repositories.ErrLimitReached) {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("limit reached: at most %d perks per unit", repositories.MaxPerksPerUnit)})
+			return
+		}
 		serverError(c, err)
 		return
 	}

@@ -14,10 +14,10 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 
 ## Security
 
-- [ ] **Trusted proxies (code).** Behind a load balancer, call `SetTrustedProxies` so client IPs (logs, rate limits) are real, not the proxy's.
-- [ ] **Rate limiting (code).** `POST /auth/register` and the other endpoints are open to abuse. Add per-IP limits, at least on registration. Check Firebase's own limits and consider email verification.
-- [ ] **Server timeouts and graceful shutdown (code).** `r.Run` sets no read, write or idle timeouts and does not drain requests on shutdown. Use an `http.Server` with timeouts and `Shutdown`.
-- [ ] **Request body size limit (code).** Cap JSON body size.
+- [ ] **Set `TRUSTED_PROXIES` (config).** Rate limiting keys on the client IP. With the variable unset, the server ignores `X-Forwarded-For` and uses the connection's address, which is safe but means every client behind a load balancer shares one bucket. Set it to the load balancer's address(es) or CIDR range(s), comma-separated.
+- [ ] **Rate limiting across instances.** Limits are held in memory per server instance. If you run several instances, each has its own counters; move to a gateway or shared store if that matters.
+- [ ] **Firebase revocation check cost.** `RequireAuth` calls Firebase on every request to check for revoked or disabled accounts. Watch latency and Firebase quota; if it hurts, cache results for a short time.
+- [ ] **Re-run `govulncheck` before each release** (`go run golang.org/x/vuln/cmd/govulncheck@latest ./...`) and build with Go 1.26.6 or newer.
 - [ ] **Firebase console.** Add the production domain to authorized domains; review password policy and sign-in methods.
 - [ ] **Review what is public.** `GET /warbands/:id`, `/units/:id` and `/campaigns/:id` need no login and return owner IDs. IDs are random UUIDs, but confirm public-by-ID is intended.
 - [x] `.env` is gitignored and was never committed (checked git history).
@@ -41,6 +41,7 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 
 ## Done
 
+- [x] Security scan fixes: Go 1.26.6 and updated grpc, x/net, x/text, quic-go, and otel/sdk (`govulncheck` reports no reachable vulnerabilities); request body cap (64 KiB, 413); field length and number range validation with blank/control-character rejection; per-account record quotas enforced under a row lock (409); per-IP rate limit (20/s, burst 60) and a tighter one on registration (5, then 1/min, 429); server read/write/idle timeouts and graceful shutdown; trusted proxies off by default; revoked and disabled tokens rejected.
 - [x] OpenAPI spec in `docs/openapi.yaml`, with tests that keep it in step with the routes and response shapes.
 - [x] `.env` is optional: `main.go` loads it from the working directory or its parent when present, real environment variables win, and a missing file is fine (a malformed one still stops startup).
 - [x] Port comes from `PORT` (default 8080).

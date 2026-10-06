@@ -111,3 +111,26 @@ func TestProtectedRoutesRequireAuth(t *testing.T) {
 		})
 	}
 }
+
+// Registration creates Firebase accounts, so it has its own tight per-IP limit.
+// Invalid bodies are used so no Firebase call is made: they are answered 400
+// until the limit is hit, then 429.
+func TestRegisterIsRateLimited(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	routes.GetAuthControllers(r)
+
+	const burst = 5
+	for i := 1; i <= burst; i++ {
+		if w := serve(r, "POST", "/auth/register", `{}`); w.Code != 400 {
+			t.Fatalf("request %d: status = %d, want 400", i, w.Code)
+		}
+	}
+	w := serve(r, "POST", "/auth/register", `{}`)
+	if w.Code != 429 {
+		t.Errorf("request %d: status = %d, want 429", burst+1, w.Code)
+	}
+	if w.Header().Get("Retry-After") == "" {
+		t.Error("429 should include Retry-After")
+	}
+}

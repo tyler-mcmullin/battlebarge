@@ -19,6 +19,19 @@ info:
 
     **CORS.** Browsers may call the API from the origins listed in the server's
     `CORS_ALLOWED_ORIGINS` setting.
+
+    **Limits.**
+    - Request bodies over 64 KiB are rejected with 413.
+    - Each client IP is limited to about 20 requests per second (bursts of 60),
+      and `POST /auth/register` to 5 at once and then 1 per minute. Over the
+      limit the response is 429 with a `Retry-After` header (seconds).
+    - Text fields have maximum lengths and numbers have ranges, listed in the
+      schemas; violations return 400. Names and titles may not be blank, and
+      text may not contain control characters (tabs and newlines are fine).
+    - Each account can only create so many records, and going over returns 409
+      with `limit reached`: 50 warbands per user, 100 units per warband, 50
+      perks per unit, 20 campaigns per user, 100 chapters, 20 teams, and 100
+      warbands per campaign.
 servers:
   - url: http://localhost:8080
     description: Local development (the port is set by `PORT`)
@@ -61,6 +74,15 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '409':
           description: Email already registered, or username already taken.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Too many registrations from this IP; see `Retry-After`.
+          headers:
+            Retry-After:
+              schema: { type: integer }
+              description: Seconds to wait before retrying.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -119,6 +141,11 @@ paths:
               schema: { $ref: '#/components/schemas/Warband' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Limit reached (50 warbands per user).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/ServerError' }
 
   /warbands/{id}:
@@ -191,6 +218,11 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404':
           description: The warband does not exist or is not yours.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Limit reached (100 units per warband).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -312,6 +344,11 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Limit reached (50 perks per unit).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/ServerError' }
 
   /units/{id}/perk/{perkId}:
@@ -376,6 +413,11 @@ paths:
               schema: { $ref: '#/components/schemas/Campaign' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Limit reached (20 campaigns per user).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/ServerError' }
 
   /campaigns/{id}:
@@ -446,6 +488,11 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Limit reached (100 chapters per campaign).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/ServerError' }
 
   /campaigns/{id}/chapters/{chapterId}:
@@ -509,7 +556,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
-          description: The campaign already has a team with that name.
+          description: The campaign already has a team with that name, or already has 20 teams.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -596,7 +643,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '409':
-          description: The warband is already in this campaign.
+          description: The warband is already in this campaign, or the campaign already has 100 warbands.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -813,50 +860,51 @@ components:
       required: [email, username, password]
       properties:
         email: { type: string, format: email, maxLength: 255 }
-        username: { type: string, maxLength: 50, description: Must be unique. }
+        username: { type: string, minLength: 1, maxLength: 50, description: Must be unique; not blank. }
         password:
           type: string
           format: password
-          description: Subject to Firebase's password rules.
+          maxLength: 128
+          description: Also subject to Firebase's password rules.
 
     CreateWarbandRequest:
       type: object
       required: [name]
       properties:
-        name: { type: string }
-        faction: { type: string }
-        description: { type: string }
-        requisition_points: { type: integer }
-        supply_limit: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        faction: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 2000 }
+        requisition_points: { type: integer, minimum: 0, maximum: 1000000 }
+        supply_limit: { type: integer, minimum: 0, maximum: 1000000 }
 
     UpdateWarbandRequest:
       type: object
       description: Send only the fields to change.
       properties:
-        name: { type: string }
-        faction: { type: string }
-        description: { type: string }
-        requisition_points: { type: integer }
-        supply_limit: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        faction: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 2000 }
+        requisition_points: { type: integer, minimum: 0, maximum: 1000000 }
+        supply_limit: { type: integer, minimum: 0, maximum: 1000000 }
 
     CreateUnitRequest:
       type: object
       required: [warband_id, unit_name]
       properties:
         warband_id: { type: string, format: uuid, description: A warband you own. }
-        unit_name: { type: string }
-        narrative_name: { type: string }
-        bio: { type: string }
-        points: { type: integer }
+        unit_name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        narrative_name: { type: string, maxLength: 100 }
+        bio: { type: string, maxLength: 5000 }
+        points: { type: integer, minimum: 0, maximum: 1000000 }
 
     UpdateUnitRequest:
       type: object
       description: Send only the fields to change.
       properties:
-        unit_name: { type: string }
-        narrative_name: { type: string }
-        bio: { type: string }
-        points: { type: integer }
+        unit_name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        narrative_name: { type: string, maxLength: 100 }
+        bio: { type: string, maxLength: 5000 }
+        points: { type: integer, minimum: 0, maximum: 1000000 }
 
     IncrementRequest:
       type: object
@@ -864,59 +912,63 @@ components:
       properties:
         amount:
           type: integer
+          minimum: -1000000
+          maximum: 1000000
           description: Positive or negative. Must be non-zero (0 is rejected as missing).
 
     AddPerkRequest:
       type: object
       required: [name]
       properties:
-        name: { type: string }
-        description: { type: string }
+        name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        description: { type: string, maxLength: 1000 }
         is_scar: { type: boolean, default: false }
 
     CreateCampaignRequest:
       type: object
       required: [name]
       properties:
-        name: { type: string }
-        description: { type: string }
-        points_per_win: { type: integer }
-        points_per_loss: { type: integer }
-        starting_requisition: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        description: { type: string, maxLength: 2000 }
+        points_per_win: { type: integer, minimum: 0, maximum: 1000000 }
+        points_per_loss: { type: integer, minimum: 0, maximum: 1000000 }
+        starting_requisition: { type: integer, minimum: 0, maximum: 1000000 }
 
     UpdateCampaignRequest:
       type: object
       description: Send only the fields to change.
       properties:
-        name: { type: string }
-        description: { type: string }
-        points_per_win: { type: integer }
-        points_per_loss: { type: integer }
-        starting_requisition: { type: integer }
+        name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        description: { type: string, maxLength: 2000 }
+        points_per_win: { type: integer, minimum: 0, maximum: 1000000 }
+        points_per_loss: { type: integer, minimum: 0, maximum: 1000000 }
+        starting_requisition: { type: integer, minimum: 0, maximum: 1000000 }
 
     CreateChapterRequest:
       type: object
       required: [title]
       properties:
-        title: { type: string }
-        description: { type: string }
+        title: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        description: { type: string, maxLength: 2000 }
         sort_order:
           type: integer
+          minimum: 0
+          maximum: 1000000
           description: Defaults to one after the last chapter. An explicit 0 is honoured.
 
     UpdateChapterRequest:
       type: object
       description: Send only the fields to change.
       properties:
-        title: { type: string }
-        description: { type: string }
-        sort_order: { type: integer }
+        title: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
+        description: { type: string, maxLength: 2000 }
+        sort_order: { type: integer, minimum: 0, maximum: 1000000 }
 
     TeamRequest:
       type: object
       required: [name]
       properties:
-        name: { type: string, maxLength: 50 }
+        name: { type: string, minLength: 1, maxLength: 50, description: Not blank. }
 
     JoinCampaignRequest:
       type: object

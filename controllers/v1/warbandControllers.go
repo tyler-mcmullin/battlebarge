@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -16,7 +17,7 @@ import (
 
 // Arguments: gin context
 //
-// Returns: None (responds 201 with the warband; 400 on bad input; 401 if unauthenticated)
+// Returns: None (responds 201 with the warband; 400 on bad input; 401 if unauthenticated; 409 if the user already has the maximum number of warbands)
 //
 // POST /warbands/create. Creates a warband owned by the authenticated user, applying defaults for omitted optional fields
 func CreateWarband(c *gin.Context) {
@@ -62,6 +63,10 @@ func CreateWarband(c *gin.Context) {
 	}
 
 	if err := repositories.CreateWarband(warband); err != nil {
+		if errors.Is(err, repositories.ErrLimitReached) {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("limit reached: at most %d warbands per user", repositories.MaxWarbandsPerUser)})
+			return
+		}
 		serverError(c, err)
 		return
 	}

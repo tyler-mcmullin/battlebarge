@@ -149,6 +149,7 @@ func SetupDB(t *testing.T) {
 		t.Fatalf("parse TEST_POSTGRES_URL: %v", err)
 	}
 	cfg.ConnConfig.RuntimeParams["search_path"] = schema
+	cfg.MaxConns = 32 // enough that concurrency tests can really overlap
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

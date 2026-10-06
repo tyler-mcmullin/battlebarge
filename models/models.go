@@ -106,91 +106,97 @@ type CampaignWarband struct {
 }
 
 // Request Structs
+//
+// Validation limits (enforced by the binding tags below, and mirrored in
+// docs/openapi.yaml): names and titles 1-100 characters and not blank;
+// descriptions up to 2000 characters (unit bio 5000, perk description 1000);
+// point-style numbers 0-1000000; increments -1000000 to 1000000 and non-zero.
+// "safetext" rejects NUL and control characters.
 type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email,max=255"`
-	Username string `json:"username" binding:"required,max=50"`
-	Password string `json:"password" binding:"required"`
+	Username string `json:"username" binding:"required,notblank,safetext,max=50"`
+	Password string `json:"password" binding:"required,max=128"`
 }
 
 type CreateWarbandRequest struct {
-	Name              string  `json:"name" binding:"required"`
-	Faction           *string `json:"faction"`
-	Description       *string `json:"description"`
-	RequisitionPoints *int    `json:"requisition_points"`
-	SupplyLimit       *int    `json:"supply_limit"`
+	Name              string  `json:"name" binding:"required,notblank,safetext,max=100"`
+	Faction           *string `json:"faction" binding:"omitempty,safetext,max=100"`
+	Description       *string `json:"description" binding:"omitempty,safetext,max=2000"`
+	RequisitionPoints *int    `json:"requisition_points" binding:"omitempty,min=0,max=1000000"`
+	SupplyLimit       *int    `json:"supply_limit" binding:"omitempty,min=0,max=1000000"`
 }
 
 type UpdateWarbandRequest struct {
-	Name              *string `json:"name"`
-	Faction           *string `json:"faction"`
-	Description       *string `json:"description"`
-	RequisitionPoints *int    `json:"requisition_points"`
-	SupplyLimit       *int    `json:"supply_limit"`
+	Name              *string `json:"name" binding:"omitempty,notblank,safetext,max=100"`
+	Faction           *string `json:"faction" binding:"omitempty,safetext,max=100"`
+	Description       *string `json:"description" binding:"omitempty,safetext,max=2000"`
+	RequisitionPoints *int    `json:"requisition_points" binding:"omitempty,min=0,max=1000000"`
+	SupplyLimit       *int    `json:"supply_limit" binding:"omitempty,min=0,max=1000000"`
 }
 
 type CreateUnitRequest struct {
-	WarbandID     string  `json:"warband_id" binding:"required"`
-	UnitName      string  `json:"unit_name" binding:"required"`
-	NarrativeName *string `json:"narrative_name"`
-	Bio           *string `json:"bio"`
-	Points        *int    `json:"points"`
+	WarbandID     string  `json:"warband_id" binding:"required,max=36"`
+	UnitName      string  `json:"unit_name" binding:"required,notblank,safetext,max=100"`
+	NarrativeName *string `json:"narrative_name" binding:"omitempty,safetext,max=100"`
+	Bio           *string `json:"bio" binding:"omitempty,safetext,max=5000"`
+	Points        *int    `json:"points" binding:"omitempty,min=0,max=1000000"`
 }
 
 type UpdateUnitRequest struct {
-	UnitName      *string `json:"unit_name"`
-	NarrativeName *string `json:"narrative_name"`
-	Bio           *string `json:"bio"`
-	Points        *int    `json:"points"`
+	UnitName      *string `json:"unit_name" binding:"omitempty,notblank,safetext,max=100"`
+	NarrativeName *string `json:"narrative_name" binding:"omitempty,safetext,max=100"`
+	Bio           *string `json:"bio" binding:"omitempty,safetext,max=5000"`
+	Points        *int    `json:"points" binding:"omitempty,min=0,max=1000000"`
 }
 
 type IncrementRequest struct {
-	Amount int `json:"amount" binding:"required"`
+	Amount int `json:"amount" binding:"required,min=-1000000,max=1000000"`
 }
 
 type AddPerkRequest struct {
 	ID          uuid.UUID `json:"perk_id"`
-	Name        string    `json:"name" binding:"required"`
-	Description *string   `json:"description"`
+	Name        string    `json:"name" binding:"required,notblank,safetext,max=100"`
+	Description *string   `json:"description" binding:"omitempty,safetext,max=1000"`
 	IsScar      bool      `json:"is_scar"`
 }
 
 type CreateCampaignRequest struct {
-	Name                string  `json:"name" binding:"required"`
-	Description         *string `json:"description"`
-	PointsPerWin        *int    `json:"points_per_win"`
-	PointsPerLoss       *int    `json:"points_per_loss"`
-	StartingRequisition *int    `json:"starting_requisition"`
+	Name                string  `json:"name" binding:"required,notblank,safetext,max=100"`
+	Description         *string `json:"description" binding:"omitempty,safetext,max=2000"`
+	PointsPerWin        *int    `json:"points_per_win" binding:"omitempty,min=0,max=1000000"`
+	PointsPerLoss       *int    `json:"points_per_loss" binding:"omitempty,min=0,max=1000000"`
+	StartingRequisition *int    `json:"starting_requisition" binding:"omitempty,min=0,max=1000000"`
 }
 
 type UpdateCampaignRequest struct {
-	Name                *string `json:"name"`
-	Description         *string `json:"description"`
-	PointsPerWin        *int    `json:"points_per_win"`
-	PointsPerLoss       *int    `json:"points_per_loss"`
-	StartingRequisition *int    `json:"starting_requisition"`
+	Name                *string `json:"name" binding:"omitempty,notblank,safetext,max=100"`
+	Description         *string `json:"description" binding:"omitempty,safetext,max=2000"`
+	PointsPerWin        *int    `json:"points_per_win" binding:"omitempty,min=0,max=1000000"`
+	PointsPerLoss       *int    `json:"points_per_loss" binding:"omitempty,min=0,max=1000000"`
+	StartingRequisition *int    `json:"starting_requisition" binding:"omitempty,min=0,max=1000000"`
 }
 
 type CreateChapterRequest struct {
-	Title       string  `json:"title" binding:"required"`
-	Description *string `json:"description"`
-	SortOrder   *int    `json:"sort_order"`
+	Title       string  `json:"title" binding:"required,notblank,safetext,max=100"`
+	Description *string `json:"description" binding:"omitempty,safetext,max=2000"`
+	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=0,max=1000000"`
 }
 
 type UpdateChapterRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-	SortOrder   *int    `json:"sort_order"`
+	Title       *string `json:"title" binding:"omitempty,notblank,safetext,max=100"`
+	Description *string `json:"description" binding:"omitempty,safetext,max=2000"`
+	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=0,max=1000000"`
 }
 
 type TeamRequest struct {
-	Name string `json:"name" binding:"required,max=50"`
+	Name string `json:"name" binding:"required,notblank,safetext,max=50"`
 }
 
 type JoinCampaignRequest struct {
-	WarbandID string `json:"warband_id" binding:"required"`
-	TeamID    string `json:"team_id" binding:"required"`
+	WarbandID string `json:"warband_id" binding:"required,max=36"`
+	TeamID    string `json:"team_id" binding:"required,max=36"`
 }
 
 type ChangeTeamRequest struct {
-	TeamID string `json:"team_id" binding:"required"`
+	TeamID string `json:"team_id" binding:"required,max=36"`
 }

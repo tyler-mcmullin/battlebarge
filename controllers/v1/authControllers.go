@@ -15,7 +15,7 @@ import (
 
 // Arguments: gin context
 //
-// Returns: None (responds 201 with the new user ID; 400 on bad input; 409 if email or username is taken)
+// Returns: None (responds 201 with the new user ID; 400 on bad input, including a username over 50 or email over 255 characters; 409 if email or username is taken)
 //
 // POST /auth/register. Creates a Firebase user and a matching Postgres user, rolling back the Firebase user if the database insert fails
 func RegisterUser(c *gin.Context) {
@@ -36,7 +36,7 @@ func RegisterUser(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "email already exists"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -55,7 +55,7 @@ func RegisterUser(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "username already taken"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 

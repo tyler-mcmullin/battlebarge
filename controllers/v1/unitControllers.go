@@ -16,7 +16,7 @@ import (
 
 // Arguments: gin context
 //
-// Returns: None (responds 201 with the unit; 400 on bad input; 401 if unauthenticated; 404 if the warband is not found or not owned)
+// Returns: None (responds 201 with the unit; 400 on bad input or a malformed warband_id; 401 if unauthenticated; 404 if the warband is not found or not owned)
 //
 // POST /units/create. Creates a unit in a warband owned by the authenticated user
 func CreateUnit(c *gin.Context) {
@@ -32,9 +32,15 @@ func CreateUnit(c *gin.Context) {
 		return
 	}
 
+	warbandUUID, err := uuid.Parse(req.WarbandID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid warband_id"})
+		return
+	}
+
 	owns, err := repositories.IsWarbandOwner(req.WarbandID, uid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	if !owns {
@@ -43,11 +49,6 @@ func CreateUnit(c *gin.Context) {
 	}
 
 	now := time.Now()
-	warbandUUID, err := uuid.Parse(req.WarbandID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid warband_id"})
-		return
-	}
 
 	unit := models.Unit{
 		ID:            uuid.New(),
@@ -74,7 +75,7 @@ func CreateUnit(c *gin.Context) {
 	}
 
 	if err := repositories.CreateUnit(unit); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -83,11 +84,15 @@ func CreateUnit(c *gin.Context) {
 
 // Arguments: gin context
 //
-// Returns: None (responds 200 with the unit; 404 if not found)
+// Returns: None (responds 200 with the unit; 404 if not found or the id is malformed)
 //
 // GET /units/:id. Public endpoint returning a single unit
 func GetUnit(c *gin.Context) {
 	id := c.Param("id")
+	if !validUUID(id) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
 
 	unit, err := repositories.GetUnitByID(id)
 	if err != nil {
@@ -95,7 +100,7 @@ func GetUnit(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -104,7 +109,7 @@ func GetUnit(c *gin.Context) {
 
 // Arguments: gin context
 //
-// Returns: None (responds 204; 401 if unauthenticated; 404 if not found or its warband is not owned)
+// Returns: None (responds 204; 401 if unauthenticated; 404 if not found, its warband is not owned, or the id is malformed)
 //
 // DELETE /units/:id. Deletes a unit in a warband owned by the authenticated user
 func DeleteUnit(c *gin.Context) {
@@ -114,6 +119,10 @@ func DeleteUnit(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
 		return
 	}
+	if !validUUID(id) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
 
 	existing, err := repositories.GetUnitByID(id)
 	if err != nil {
@@ -121,13 +130,13 @@ func DeleteUnit(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
 	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	if !owns {
@@ -145,7 +154,7 @@ func DeleteUnit(c *gin.Context) {
 
 // Arguments: gin context
 //
-// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed)
 //
 // PATCH /units/:id. Partially updates a unit in a warband owned by the authenticated user
 func UpdateUnit(c *gin.Context) {
@@ -153,6 +162,10 @@ func UpdateUnit(c *gin.Context) {
 	uid := c.GetString(middleware.ContextUIDKey)
 	if uid == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+	if !validUUID(id) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 		return
 	}
 
@@ -168,13 +181,13 @@ func UpdateUnit(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
 	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	if !owns {
@@ -184,7 +197,7 @@ func UpdateUnit(c *gin.Context) {
 
 	unit, err := repositories.UpdateUnit(id, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -193,7 +206,7 @@ func UpdateUnit(c *gin.Context) {
 
 // Arguments: gin context
 //
-// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed)
 //
 // PATCH /units/:id/kills. Adds the requested amount to a unit's kills
 func AddUnitKills(c *gin.Context) {
@@ -203,6 +216,10 @@ func AddUnitKills(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
 		return
 	}
+	if !validUUID(id) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
 
 	var req models.IncrementRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -216,13 +233,13 @@ func AddUnitKills(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
 	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	if !owns {
@@ -232,7 +249,7 @@ func AddUnitKills(c *gin.Context) {
 
 	unit, err := repositories.IncrementUnitKills(id, req.Amount)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -241,7 +258,7 @@ func AddUnitKills(c *gin.Context) {
 
 // Arguments: gin context
 //
-// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed)
 //
 // PATCH /units/:id/xp. Adds the requested amount to a unit's experience
 func AddUnitXP(c *gin.Context) {
@@ -249,6 +266,10 @@ func AddUnitXP(c *gin.Context) {
 	uid := c.GetString(middleware.ContextUIDKey)
 	if uid == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+	if !validUUID(id) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 		return
 	}
 
@@ -264,13 +285,13 @@ func AddUnitXP(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
 	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	if !owns {
@@ -280,7 +301,7 @@ func AddUnitXP(c *gin.Context) {
 
 	unit, err := repositories.IncrementUnitXP(id, req.Amount)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -289,7 +310,7 @@ func AddUnitXP(c *gin.Context) {
 
 // Arguments: gin context
 //
-// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed)
 //
 // PATCH /units/:id/perk. Adds a perk or scar with a newly generated ID to a unit
 func AddUnitPerk(c *gin.Context) {
@@ -297,6 +318,10 @@ func AddUnitPerk(c *gin.Context) {
 	uid := c.GetString(middleware.ContextUIDKey)
 	if uid == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
+		return
+	}
+	if !validUUID(id) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 		return
 	}
 
@@ -313,13 +338,13 @@ func AddUnitPerk(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
 	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	if !owns {
@@ -329,7 +354,7 @@ func AddUnitPerk(c *gin.Context) {
 
 	unit, err := repositories.AddUnitPerk(id, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
@@ -338,7 +363,7 @@ func AddUnitPerk(c *gin.Context) {
 
 // Arguments: gin context
 //
-// Returns: None (responds 200 with the updated unit; 401 if unauthenticated; 404 if the unit or perk is not found or not owned)
+// Returns: None (responds 200 with the updated unit; 401 if unauthenticated; 404 if the unit or perk is not found, not owned, or the id is malformed)
 //
 // DELETE /units/:id/perk/:perkId. Removes a perk from a unit
 func DeleteUnitPerk(c *gin.Context) {
@@ -349,6 +374,10 @@ func DeleteUnitPerk(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing uid in context"})
 		return
 	}
+	if !validUUID(id) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
+		return
+	}
 
 	existing, err := repositories.GetUnitByID(id)
 	if err != nil {
@@ -356,13 +385,13 @@ func DeleteUnitPerk(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "unit not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 
 	owns, err := repositories.IsWarbandOwner(existing.WarbandID.String(), uid)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		serverError(c, err)
 		return
 	}
 	if !owns {

@@ -85,8 +85,8 @@ type CampaignChapter struct {
 
 // Request Structs
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
+	Email    string `json:"email" binding:"max=255"`
+	Username string `json:"username" binding:"max=50"`
 	Password string `json:"password"`
 }
 

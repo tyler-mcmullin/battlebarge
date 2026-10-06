@@ -36,6 +36,13 @@ func main() {
 		panic(err)
 	}
 
+	//signed-in users must verify their email before using the API. Only turn
+	//this off for local development.
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("REQUIRE_EMAIL_VERIFICATION")), "false") {
+		middleware.SetRequireVerifiedEmail(false)
+		log.Println("WARNING: email verification is DISABLED (REQUIRE_EMAIL_VERIFICATION=false); do not run production like this")
+	}
+
 	//router setup
 	r := gin.Default()
 

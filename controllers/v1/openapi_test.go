@@ -94,9 +94,13 @@ func TestOpenAPISecurityMatchesRoutes(t *testing.T) {
 			}
 			o := asMap(op)
 			_, secured := o["security"]
-			_, has401 := asMap(o["responses"])["401"]
-			if secured && !has401 {
+			responses := asMap(o["responses"])
+			if _, has401 := responses["401"]; secured && !has401 {
 				t.Errorf("%s %s requires auth but does not document 401", strings.ToUpper(method), path)
+			}
+			// authenticated routes also reject unverified emails with 403
+			if _, has403 := responses["403"]; secured && !has403 {
+				t.Errorf("%s %s requires auth but does not document 403 (email not verified)", strings.ToUpper(method), path)
 			}
 		}
 	}

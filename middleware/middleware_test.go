@@ -265,7 +265,7 @@ func TestRequireAuth_AcceptsVerifiedToken(t *testing.T) {
 	var gotToken string
 	restore := middleware.SetTokenVerifier(func(ctx context.Context, idToken string) (*auth.Token, error) {
 		gotToken = idToken
-		return &auth.Token{UID: "user-123"}, nil
+		return &auth.Token{UID: "user-123", Claims: map[string]any{"email_verified": true}}, nil
 	})
 	defer restore()
 
@@ -444,4 +444,55 @@ func TestRateLimit(t *testing.T) {
 			t.Errorf("spoofed header: status = %d, want 429 (same real client)", code)
 		}
 	})
+}
+
+func TestRequireAuth_RequiresVerifiedEmail(t *testing.T) {
+	tests := []struct {
+		name     string
+		claims   map[string]any
+		required bool
+		want     int
+	}{
+		{"verified", map[string]any{"email_verified": true}, true, http.StatusOK},
+		{"not verified", map[string]any{"email_verified": false}, true, http.StatusForbidden},
+		{"claim missing", map[string]any{}, true, http.StatusForbidden},
+		{"nil claims", nil, true, http.StatusForbidden},
+		{"claim has the wrong type", map[string]any{"email_verified": "true"}, true, http.StatusForbidden},
+		{"requirement turned off, unverified", map[string]any{"email_verified": false}, false, http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer middleware.SetTokenVerifier(func(ctx context.Context, idToken string) (*auth.Token, error) {
+				return &auth.Token{UID: "u1", Claims: tt.claims}, nil
+			})()
+			defer middleware.SetRequireVerifiedEmail(tt.required)()
+
+			w, reached := do(t, "Bearer t", middleware.RequireAuth())
+
+			if w.Code != tt.want {
+				t.Errorf("status = %d, want %d", w.Code, tt.want)
+			}
+			if reached != (tt.want == http.StatusOK) {
+				t.Errorf("handler reached = %v, want %v", reached, tt.want == http.StatusOK)
+			}
+			if tt.want == http.StatusForbidden && !strings.Contains(w.Body.String(), "email not verified") {
+				t.Errorf("body = %s, want an 'email not verified' message", w.Body.String())
+			}
+		})
+	}
+}
+
+func TestEmailVerificationRequired_DefaultsToOn(t *testing.T) {
+	if !middleware.EmailVerificationRequired() {
+		t.Error("verification must be required unless explicitly turned off")
+	}
+	restore := middleware.SetRequireVerifiedEmail(false)
+	if middleware.EmailVerificationRequired() {
+		t.Error("SetRequireVerifiedEmail(false) did not take effect")
+	}
+	restore()
+	if !middleware.EmailVerificationRequired() {
+		t.Error("restore did not bring the requirement back")
+	}
 }

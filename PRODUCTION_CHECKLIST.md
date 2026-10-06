@@ -9,6 +9,7 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 - [ ] **Firebase admin credentials.** `RegisterUser` creates and deletes Firebase users, which needs service-account credentials (`GOOGLE_APPLICATION_CREDENTIALS` or the platform's default credentials) for the production project. Token verification alone does not. Set `FIREBASE_PROJECT_ID` to the production project.
 - [ ] **Production Postgres.** Managed instance, `POSTGRES_URL` with TLS (`sslmode=require` or stricter), and a dedicated least-privilege database user.
 - [ ] **Run migrations on production, in order, once each.** 001 (unit_perks), 002 (campaigns) and 003 (campaign join codes) in `db/migrations/`. There is no migration runner, so record here when each ran: development has had 001 only so far. Take a `pg_dump` backup first. 003 gives every existing campaign a random join code (owners can rotate it).
+- [ ] **Email verification (config).** The API now requires a verified email (403 `email not verified` otherwise). Set up Firebase's verification email: sender/template, and add the frontend's domain to authorized domains, or users can never verify. Make sure `REQUIRE_EMAIL_VERIFICATION` is **not** set to `false` in production (it is only for local development; the server logs a warning when it is).
 - [ ] **Release mode (config).** Set `GIN_MODE=release`.
 - [ ] **Hosting and deployment.** Nothing exists yet (no Dockerfile or deploy config). Choose a host, build and deploy, and put it behind HTTPS (TLS terminated by the platform or a proxy).
 
@@ -42,6 +43,7 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 ## Done
 
 - [x] Campaign join codes: joining needs the campaign's secret code (not just its public ID); only the owner sees it, and can rotate it. Join attempts have their own tight per-IP limit.
+- [x] Required email verification: authenticated routes return 403 until the account's email is verified.
 - [x] Security scan fixes: Go 1.26.6 and updated grpc, x/net, x/text, quic-go, and otel/sdk (`govulncheck` reports no reachable vulnerabilities); request body cap (64 KiB, 413); field length and number range validation with blank/control-character rejection; per-account record quotas enforced under a row lock (409); per-IP rate limit (20/s, burst 60) and a tighter one on registration (5, then 1/min, 429); server read/write/idle timeouts and graceful shutdown; trusted proxies off by default; revoked and disabled tokens rejected.
 - [x] OpenAPI spec in `docs/openapi.yaml`, with tests that keep it in step with the routes and response shapes.
 - [x] `.env` is optional: `main.go` loads it from the working directory or its parent when present, real environment variables win, and a missing file is fine (a malformed one still stops startup).

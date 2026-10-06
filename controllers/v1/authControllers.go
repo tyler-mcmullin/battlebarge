@@ -9,15 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"battlebarge/db"
+	"battlebarge/middleware"
 	"battlebarge/models"
 	"battlebarge/repositories"
 )
 
 // Arguments: gin context
 //
-// Returns: None (responds 201 with the new user ID; 400 on bad input, including a username over 50 or email over 255 characters; 409 if email or username is taken)
+// Returns: None (responds 201 with the new user ID and email_verification_required; 400 on bad input, including a username over 50 or email over 255 characters; 409 if email or username is taken)
 //
-// POST /auth/register. Creates a Firebase user and a matching Postgres user, rolling back the Firebase user if the database insert fails
+// POST /auth/register. Creates a Firebase user and a matching Postgres user, rolling back the Firebase user if the database insert fails. The new user must verify their email before the API will accept their token
 func RegisterUser(c *gin.Context) {
 	var req models.RegisterRequest
 
@@ -60,7 +61,8 @@ func RegisterUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": "user created",
-		"user_id": firebaseUser.UID,
+		"message":                     "user created",
+		"user_id":                     firebaseUser.UID,
+		"email_verification_required": middleware.EmailVerificationRequired(),
 	})
 }

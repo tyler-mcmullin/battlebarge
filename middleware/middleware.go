@@ -32,6 +32,31 @@ var verifyToken TokenVerifier = func(ctx context.Context, idToken string) (*auth
 	return db.AuthClient.VerifyIDTokenAndCheckRevoked(ctx, idToken)
 }
 
+// requireVerifiedEmail makes RequireAuth reject accounts whose email address
+// has not been verified. It is on by default; main.go can turn it off for
+// local development with REQUIRE_EMAIL_VERIFICATION=false.
+var requireVerifiedEmail = true
+
+// Arguments: required (bool) - whether RequireAuth should reject unverified emails
+//
+// Returns: func() - restores the previous setting
+//
+// Turns the verified-email requirement on or off
+func SetRequireVerifiedEmail(required bool) func() {
+	prev := requireVerifiedEmail
+	requireVerifiedEmail = required
+	return func() { requireVerifiedEmail = prev }
+}
+
+// Arguments: None
+//
+// Returns: bool - true if RequireAuth currently rejects unverified emails
+//
+// Reports the verified-email requirement, so the registration response can tell clients what to expect
+func EmailVerificationRequired() bool {
+	return requireVerifiedEmail
+}
+
 // Arguments: v (TokenVerifier) - the verifier RequireAuth should use
 //
 // Returns: func() - restores the previous verifier
@@ -44,8 +69,8 @@ func SetTokenVerifier(v TokenVerifier) func() {
 }
 
 // RequireAuth verifies the Firebase ID token sent in the Authorization header
-// (format: "Bearer <token>") and attaches the verified UID to the request
-// context. Routes that only need to know who the caller is should use this
+// (format: "Bearer <token>"), requires the account's email to be verified
+// (unless turned off), and attaches the verified UID to the request context. Routes that only need to know who the caller is should use this
 // alone. Routes that need full user data should additionally chain LoadUser().
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -70,6 +95,17 @@ func RequireAuth() gin.HandlerFunc {
 			}
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": msg})
 			return
+		}
+
+		// A signed-in user whose email is not verified is authenticated but not
+		// allowed yet: 403 (not 401) so clients know to prompt for verification
+		// instead of asking them to sign in again. The claim is refreshed when
+		// the client fetches a new ID token after verifying.
+		if requireVerifiedEmail {
+			if verified, _ := token.Claims["email_verified"].(bool); !verified {
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "email not verified"})
+				return
+			}
 		}
 
 		c.Set(ContextUIDKey, token.UID)

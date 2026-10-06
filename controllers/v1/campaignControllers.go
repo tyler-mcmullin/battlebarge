@@ -655,7 +655,7 @@ func LeaveCampaign(c *gin.Context) {
 
 // Arguments: c (gin context)
 //
-// Returns: None (responds 200 with the join code; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed)
+// Returns: None (responds 200 with the join code; 401 if unauthenticated; 403 if the email is not verified; 404 if the campaign is not found, not owned, or the id is malformed)
 //
 // GET /campaigns/:id/join-code. Shows the campaign's join code to its owner, to share with players
 func GetCampaignJoinCode(c *gin.Context) {
@@ -683,7 +683,7 @@ func GetCampaignJoinCode(c *gin.Context) {
 
 // Arguments: c (gin context)
 //
-// Returns: None (responds 200 with the new join code; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed)
+// Returns: None (responds 200 with the new join code; 401 if unauthenticated; 403 if the email is not verified; 404 if the campaign is not found, not owned, or the id is malformed)
 //
 // POST /campaigns/:id/join-code/rotate. Replaces the campaign's join code, so the old one stops working. Existing members are unaffected
 func RotateCampaignJoinCode(c *gin.Context) {

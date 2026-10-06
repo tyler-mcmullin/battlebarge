@@ -6,9 +6,18 @@ info:
     REST API for tracking warbands, units, and campaigns.
 
     **Authentication.** Sign in with the Firebase client SDK and send the
-    resulting ID token as `Authorization: Bearer <token>`. New users first call
-    `POST /auth/register`, then sign in with the same email and password.
-    Operations marked with a lock require a token; the rest are public.
+    resulting ID token as `Authorization: Bearer <token>`. Operations marked
+    with a lock require a token; the rest are public.
+
+    **Signing up.** The flow is: call `POST /auth/register`, sign in with the
+    same email and password using the Firebase client SDK, send the
+    verification email (`sendEmailVerification`), and after the user clicks the
+    link fetch a fresh ID token (`getIdToken(true)`) before calling the API.
+    Until the email is verified, every authenticated operation returns 403 with
+    `{"error": "email not verified"}`; that response means "prompt the user to
+    verify", not "sign in again". (The server can turn this requirement off for
+    local development; `email_verification_required` in the register response
+    says whether it is on.)
 
     **Joining a campaign.** A campaign's ID is public, so joining also needs
     its secret join code. Only the campaign's owner can see the code (in the
@@ -78,6 +87,11 @@ paths:
                 properties:
                   message: { type: string, example: user created }
                   user_id: { type: string, description: Firebase UID. }
+                  email_verification_required:
+                    type: boolean
+                    description: |
+                      True when the user must verify their email before the API
+                      accepts their token.
         '400': { $ref: '#/components/responses/BadRequest' }
         '409':
           description: Email already registered, or username already taken.
@@ -111,6 +125,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '500': { $ref: '#/components/responses/ServerError' }
 
   /warbands:
@@ -128,6 +143,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Warband' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '500': { $ref: '#/components/responses/ServerError' }
 
   /warbands/create:
@@ -148,6 +164,7 @@ paths:
               schema: { $ref: '#/components/schemas/Warband' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '409':
           description: Limit reached (50 warbands per user).
           content:
@@ -188,6 +205,7 @@ paths:
               schema: { $ref: '#/components/schemas/Warband' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
     delete:
@@ -198,6 +216,7 @@ paths:
       responses:
         '204': { description: Deleted. }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -223,6 +242,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404':
           description: The warband does not exist or is not yours.
           content:
@@ -268,6 +288,7 @@ paths:
               schema: { $ref: '#/components/schemas/Unit' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
     delete:
@@ -278,6 +299,7 @@ paths:
       responses:
         '204': { description: Deleted. }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -302,6 +324,7 @@ paths:
               schema: { $ref: '#/components/schemas/Unit' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -326,6 +349,7 @@ paths:
               schema: { $ref: '#/components/schemas/Unit' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -350,6 +374,7 @@ paths:
               schema: { $ref: '#/components/schemas/Unit' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Limit reached (50 perks per unit).
@@ -377,6 +402,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Unit' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404':
           description: The unit or perk does not exist, or the unit is not yours.
           content:
@@ -399,6 +425,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Campaign' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '500': { $ref: '#/components/responses/ServerError' }
 
   /campaigns/create:
@@ -420,6 +447,7 @@ paths:
               schema: { $ref: '#/components/schemas/Campaign' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '409':
           description: Limit reached (20 campaigns per user).
           content:
@@ -460,6 +488,7 @@ paths:
               schema: { $ref: '#/components/schemas/Campaign' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
     delete:
@@ -470,6 +499,7 @@ paths:
       responses:
         '204': { description: Deleted. }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -494,6 +524,7 @@ paths:
               schema: { $ref: '#/components/schemas/CampaignChapter' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Limit reached (100 chapters per campaign).
@@ -527,6 +558,7 @@ paths:
               schema: { $ref: '#/components/schemas/CampaignChapter' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
     delete:
@@ -537,6 +569,7 @@ paths:
       responses:
         '204': { description: Deleted. }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -561,6 +594,7 @@ paths:
               schema: { $ref: '#/components/schemas/CampaignTeam' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: The campaign already has a team with that name, or already has 20 teams.
@@ -594,6 +628,7 @@ paths:
               schema: { $ref: '#/components/schemas/CampaignTeam' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: The campaign already has a team with that name.
@@ -609,6 +644,7 @@ paths:
       responses:
         '204': { description: Deleted. }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409':
           description: Warbands are still on the team; move them first.
@@ -632,6 +668,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/JoinCodeResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -652,6 +689,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/JoinCodeResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404': { $ref: '#/components/responses/NotFound' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -687,7 +725,8 @@ paths:
         '403':
           description: |
             The join code is missing or wrong (`join code required` or
-            `invalid join code`).
+            `invalid join code`), or the email is not verified
+            (`email not verified`).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -728,6 +767,7 @@ paths:
               schema: { $ref: '#/components/schemas/Campaign' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404':
           description: The warband or team is not in this campaign, or you own neither the campaign nor the warband.
           content:
@@ -742,6 +782,7 @@ paths:
       responses:
         '204': { description: Removed. }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
         '404':
           description: The warband is not in this campaign, or you own neither the campaign nor the warband.
           content:
@@ -764,6 +805,14 @@ components:
       schema: { type: string, format: uuid }
 
   responses:
+    EmailNotVerified:
+      description: |
+        The token is valid but the account's email is not verified yet. Ask the
+        user to verify their email, then fetch a fresh ID token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: email not verified }
     BadRequest:
       description: The request body is malformed or fails validation.
       content:

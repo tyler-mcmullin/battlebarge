@@ -10,6 +10,7 @@ Battlebarge is a Go (Gin) REST API for tracking tabletop-wargame warbands, units
 
 - Run the server: `cd cmd && go run .` — it must be run from `cmd/` because `main.go` loads `../.env`. Listens on `:8080`.
 - Build / vet: `go build ./...`, `go vet ./...`
+- Tests: `go test ./...`; single test: `go test ./repositories -run TestAddAndDeleteUnitPerk`. Database tests create a throwaway schema in the Postgres named by `TEST_POSTGRES_URL` (e.g. `postgres://user@localhost:5432/bbtest`) and skip when it is unset. Tests sit beside the code they test; shared database fixtures are in `testutil/`. The table definitions live in `testutil/db.go` (`schemaSQL`) and must be kept in sync with the real schema. Controller tests use the real handlers with a fake auth middleware (`X-Test-UID` header); Firebase itself is never called.
 - Firebase emulators (Auth on 9099, Firestore on 8000, UI enabled): `firebase emulators:start`
 - `.env` (gitignored) needs `FIREBASE_PROJECT_ID`, `POSTGRES_URL`, and for local dev `FIREBASE_AUTH_EMULATOR_HOST` / `FIRESTORE_EMULATOR_HOST`. `testlogin.html` (gitignored) is a local helper for obtaining ID tokens.
 - The Postgres schema is not in the repo; the SQL in `repositories/` is the source of truth for table/column names. `db/migrations/` holds hand-run SQL files (currently only the unit_perks migration).
@@ -41,3 +42,7 @@ Every function except `main` has a doc comment directly above it in this format,
 ```
 
 Gin handlers use `gin context` for arguments and list the HTTP method/path and response status codes in place of returns. Add this comment to every new function, and update it whenever a function's arguments, returns, or behavior change.
+
+## TODO
+
+- Add Firebase Auth emulator tests (emulator config is in `firebase.json`, port 9099; skip when `FIREBASE_AUTH_EMULATOR_HOST` is unset, like the Postgres tests). Currently untested: a valid token being accepted by `RequireAuth`, the invalid/expired token branch, `LoadUser` with a verified token, and `RegisterUser` end to end (Firebase user creation, rollback when the Postgres insert fails, 409 on duplicate email). Controller tests use a fake `X-Test-UID` auth middleware instead of real token verification.

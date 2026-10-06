@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +14,9 @@ import (
 )
 
 func main() {
-	//load environment
-	err := godotenv.Load("../.env")
-	if err != nil {
-		panic(err)
-	}
+	//load environment: .env is optional (production sets real env variables),
+	//and variables that are already set take precedence over the file
+	loadEnvFile()
 
 	//initialize firebase
 	projectID := os.Getenv("FIREBASE_PROJECT_ID")
@@ -42,9 +42,33 @@ func main() {
 	routes.GetUnitControllers(r)
 	routes.GetCampaignControllers(r)
 
-	err = r.Run(":8080")
-	if err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	if err := r.Run(":" + port); err != nil {
 		panic(err)
 	}
 
+}
+
+// Arguments: None
+//
+// Returns: None
+//
+// Loads a .env file from the working directory or its parent (so it works from
+// the repo root or from cmd/). A missing file is fine; a file that exists but
+// cannot be read or parsed stops startup.
+func loadEnvFile() {
+	for _, path := range []string{".env", "../.env"} {
+		err := godotenv.Load(path)
+		if err == nil {
+			log.Printf("loaded environment from %s", path)
+			return
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			panic(err)
+		}
+	}
 }

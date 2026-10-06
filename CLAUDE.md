@@ -8,7 +8,7 @@ Battlebarge is a Go (Gin) REST API for tracking tabletop-wargame warbands, units
 
 ## Commands
 
-- Run the server: `cd cmd && go run .` — it must be run from `cmd/` because `main.go` loads `../.env`. Listens on `:8080`.
+- Run the server: `go run ./cmd` from the repo root (or `cd cmd && go run .`). `main.go` loads `.env` from the working directory or its parent if one exists; real environment variables take precedence and a missing file is fine. Listens on `$PORT` (default `8080`).
 - Build / vet: `go build ./...`, `go vet ./...`
 - Tests: `go test ./...`; single test: `go test ./repositories -run TestAddAndDeleteUnitPerk`. Database tests create a throwaway schema in the Postgres named by `TEST_POSTGRES_URL` (e.g. `postgres://user@localhost:5432/bbtest`) and skip when it is unset. Tests sit beside the code they test; shared database fixtures are in `testutil/`. The table definitions live in `testutil/db.go` (`schemaSQL`) and must be kept in sync with the real schema. Controller tests use the real handlers with a fake auth middleware (`X-Test-UID` header); Firebase itself is never called.
 - Firebase emulators (Auth on 9099, Firestore on 8000, UI enabled): `firebase emulators:start`

@@ -5,8 +5,6 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 ## Blockers
 
 - [ ] **CORS origins (config).** The middleware is done; set `CORS_ALLOWED_ORIGINS` in the production environment to the real frontend origin(s), e.g. `https://app.example.com`. Use `https` and exact origins, no `localhost`, no trailing slash. If unset, browsers are blocked from calling the API.
-- [ ] **Make `.env` optional (code).** `cmd/main.go` panics if `../.env` is missing, and production platforms supply real environment variables instead. Load `.env` only when it exists, and stop depending on running from `cmd/`.
-- [ ] **Configurable port (code).** The port is hard-coded to `:8080` in `cmd/main.go`. Read `PORT` (default 8080).
 - [ ] **Remove the Firebase emulator settings from production.** `FIREBASE_AUTH_EMULATOR_HOST` and `FIRESTORE_EMULATOR_HOST` must not be set, or the server talks to a local emulator instead of Firebase.
 - [ ] **Firebase admin credentials.** `RegisterUser` creates and deletes Firebase users, which needs service-account credentials (`GOOGLE_APPLICATION_CREDENTIALS` or the platform's default credentials) for the production project. Token verification alone does not. Set `FIREBASE_PROJECT_ID` to the production project.
 - [ ] **Production Postgres.** Managed instance, `POSTGRES_URL` with TLS (`sslmode=require` or stricter), and a dedicated least-privilege database user.
@@ -44,6 +42,8 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 
 ## Done
 
+- [x] `.env` is optional: `main.go` loads it from the working directory or its parent when present, real environment variables win, and a missing file is fine (a malformed one still stops startup).
+- [x] Port comes from `PORT` (default 8080).
 - [x] CORS middleware (`middleware.CORS`, configured by `CORS_ALLOWED_ORIGINS`).
 - [x] Malformed IDs return 404/400, and raw database errors are not sent to clients.
 - [x] Test suite for repositories, controllers, middleware, and routes.

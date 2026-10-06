@@ -3,8 +3,30 @@
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
+      "Read(/.env)",
+      "Read(/.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
       "Edit(./.env)",
-      "Edit(./.env.*)"
+      "Edit(./.env.*)",
+      "Edit(/.env)",
+      "Edit(/.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write|NotebookEdit|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block-env-access.sh",
+            "statusMessage": "Checking for .env access"
+          }
+        ]
+      }
     ]
   }
 }

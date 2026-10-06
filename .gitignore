@@ -1,4 +1,7 @@
+# Secrets: any .env file at any depth (the backend's .env lives at the repo root)
 .env
+.env.*
+*.env
 
 .firebaserc
 firebase.json

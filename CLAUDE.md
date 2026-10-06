@@ -11,7 +11,7 @@ Battlebarge is a Go (Gin) REST API for tracking tabletop-wargame warbands, units
 - `backend/` holds all the Go code (module `battlebarge`, so import paths are unchanged): `cmd/`, `controllers/`, `db/` (including `db/migrations/`), `middleware/`, `models/`, `repositories/`, `routes/`, `testutil/`, plus `go.mod`/`go.sum`. Paths in the architecture notes below are relative to `backend/` unless they say otherwise. Run Go commands from `backend/`.
 - `docs/openapi.yaml` is the shared API contract and stays at the repo root so a frontend can generate types from it. `firebase.json` and `.firebaserc` (emulator and project config) also stay at the root.
 - `frontend/` is planned and does not exist yet. It will have its own `.env`, separate from the backend's; never put backend secrets there.
-- The backend's secrets live in `backend/.env`; each part of the project keeps its own `.env`, and nothing lives at the repo root.
+- The backend's secrets live in `backend/.env` (each part of the project keeps its own `.env`, and nothing lives at the repo root). All `.env` files are protected: gitignored at any depth, `.claude/settings.json` denies reading or editing any `.env` or `.env.*` file at any depth, and a hook blocks tool calls that name one. Do not try to read them, including the frontend's. If a command needs their values, have the user run it, for example with the `!` prefix.
 
 ## Commands
 

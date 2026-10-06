@@ -1,4 +1,5 @@
 .env
+
 .firebaserc
 firebase.json
 firebase-debug.log
@@ -10,3 +11,6 @@ testlogin_files/
 *.exe
 .DS_Store
 **/.DS_Store
+
+# Claude Code - local machine settings
+.claude/settings.local.json

@@ -14,6 +14,11 @@ import (
 	"battlebarge/repositories"
 )
 
+// Arguments: gin context
+//
+// Returns: None (responds 201 with the warband; 400 on bad input; 401 if unauthenticated)
+//
+// POST /warbands/create. Creates a warband owned by the authenticated user, applying defaults for omitted optional fields
 func CreateWarband(c *gin.Context) {
 	var req models.CreateWarbandRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -63,6 +68,11 @@ func CreateWarband(c *gin.Context) {
 	c.JSON(http.StatusCreated, warband)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the user's warbands)
+//
+// GET /warbands. Lists all warbands owned by the authenticated user
 func GetAllWarbands(c *gin.Context) {
 	uid := c.GetString(middleware.ContextUIDKey)
 
@@ -75,6 +85,11 @@ func GetAllWarbands(c *gin.Context) {
 	c.JSON(http.StatusOK, warbands)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the warband; 404 if not found)
+//
+// GET /warbands/:id. Public endpoint returning a single warband with its units
 func GetWarbandByID(c *gin.Context) {
 	id := c.Param("id")
 
@@ -91,6 +106,11 @@ func GetWarbandByID(c *gin.Context) {
 	c.JSON(http.StatusOK, warband)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the updated warband; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+//
+// PATCH /warbands/:id. Partially updates a warband owned by the authenticated user
 func UpdateWarband(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)
@@ -118,6 +138,11 @@ func UpdateWarband(c *gin.Context) {
 	c.JSON(http.StatusOK, warband)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 204; 401 if unauthenticated; 404 if not found or not owned)
+//
+// DELETE /warbands/:id. Deletes a warband owned by the authenticated user
 func DeleteWarband(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)

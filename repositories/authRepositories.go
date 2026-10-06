@@ -1,7 +1,7 @@
 package repositories
 
-// Repositories package handles database insertions and queries
-// Functions called by controllers as needed
+// authRepositories
+// Handles database interactions used by authControllers
 
 import (
 	"context"
@@ -10,6 +10,11 @@ import (
 	"battlebarge/models"
 )
 
+// Arguments: user (models.User) - user record to insert
+//
+// Returns: error - non-nil if the insert fails (e.g. duplicate username)
+//
+// Inserts a new user row into the users table
 func CreateUser(user models.User) error {
 	query := `
 		INSERT INTO users (id, email, username, created_at, updated_at)
@@ -29,6 +34,11 @@ func CreateUser(user models.User) error {
 	return err
 }
 
+// Arguments: id (string) - Firebase UID of the user
+//
+// Returns: models.User - the matching user; error - pgx.ErrNoRows if not found or on query failure
+//
+// Fetches a single user from the users table by ID
 func GetUserByID(id string) (models.User, error) {
 	query := `
 		SELECT id, email, username, created_at, updated_at 

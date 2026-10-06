@@ -13,6 +13,11 @@ import (
 	"battlebarge/repositories"
 )
 
+// Arguments: gin context
+//
+// Returns: None (responds 201 with the new user ID; 400 on bad input; 409 if email or username is taken)
+//
+// POST /auth/register. Creates a Firebase user and a matching Postgres user, rolling back the Firebase user if the database insert fails
 func RegisterUser(c *gin.Context) {
 	var req models.RegisterRequest
 

@@ -14,6 +14,11 @@ import (
 	"battlebarge/repositories"
 )
 
+// Arguments: gin context
+//
+// Returns: None (responds 201 with the unit; 400 on bad input; 401 if unauthenticated; 404 if the warband is not found or not owned)
+//
+// POST /units/create. Creates a unit in a warband owned by the authenticated user
 func CreateUnit(c *gin.Context) {
 	var req models.CreateUnitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -76,6 +81,11 @@ func CreateUnit(c *gin.Context) {
 	c.JSON(http.StatusCreated, unit)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the unit; 404 if not found)
+//
+// GET /units/:id. Public endpoint returning a single unit
 func GetUnit(c *gin.Context) {
 	id := c.Param("id")
 
@@ -92,6 +102,11 @@ func GetUnit(c *gin.Context) {
 	c.JSON(http.StatusOK, unit)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 204; 401 if unauthenticated; 404 if not found or its warband is not owned)
+//
+// DELETE /units/:id. Deletes a unit in a warband owned by the authenticated user
 func DeleteUnit(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)
@@ -128,6 +143,11 @@ func DeleteUnit(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+//
+// PATCH /units/:id. Partially updates a unit in a warband owned by the authenticated user
 func UpdateUnit(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)
@@ -171,6 +191,11 @@ func UpdateUnit(c *gin.Context) {
 	c.JSON(http.StatusOK, unit)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+//
+// PATCH /units/:id/kills. Adds the requested amount to a unit's kills
 func AddUnitKills(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)
@@ -214,6 +239,11 @@ func AddUnitKills(c *gin.Context) {
 	c.JSON(http.StatusOK, unit)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+//
+// PATCH /units/:id/xp. Adds the requested amount to a unit's experience
 func AddUnitXP(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)
@@ -257,6 +287,11 @@ func AddUnitXP(c *gin.Context) {
 	c.JSON(http.StatusOK, unit)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found or not owned)
+//
+// PATCH /units/:id/perk. Adds a perk or scar with a newly generated ID to a unit
 func AddUnitPerk(c *gin.Context) {
 	id := c.Param("id")
 	uid := c.GetString(middleware.ContextUIDKey)
@@ -301,6 +336,11 @@ func AddUnitPerk(c *gin.Context) {
 	c.JSON(http.StatusOK, unit)
 }
 
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the updated unit; 401 if unauthenticated; 404 if the unit or perk is not found or not owned)
+//
+// DELETE /units/:id/perk/:perkId. Removes a perk from a unit
 func DeleteUnitPerk(c *gin.Context) {
 	id := c.Param("id")
 	perkID := c.Param("perkId")

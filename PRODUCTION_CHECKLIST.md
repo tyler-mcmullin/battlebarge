@@ -24,6 +24,18 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 - [x] `.env` is gitignored and was never committed (checked git history).
 - [ ] **Secrets management.** Store production secrets in the platform's secret store, not in files. Rotate anything that was ever shared.
 
+## Security decisions pending
+
+Decided later; each needs a product call. Options and my recommendation are summarized here.
+
+- [ ] **Account deletion.** No way to delete an account, and deleting a user who has warbands is blocked by the database (`warbands.user_id` has no `ON DELETE` action). Privacy laws such as GDPR can require deletion on request. Decide what happens to a deleted user's campaigns: delete them (disrupts other players), or require transferring or deleting them first (needs a transfer-ownership endpoint). Recommended: delete the user's warbands and units, and require handing off or deleting owned campaigns first.
+- [ ] **Public data and owner IDs.** Warbands, units and campaigns are readable by anyone with the ID, and responses include the owner's Firebase UID (`user_id`, `owner_id`). Options: leave as is; swap the UID for the owner's username in public responses (probably what the frontend wants to display anyway); or add per-item visibility (`public` / `members only`), which is a bigger permissions model. Recommended: keep the unlisted-link model and swap UIDs for usernames when the frontend needs owner names.
+- [ ] **Account enumeration.** Registration says "email already exists" / "username already taken", so anyone can test whether an email has an account (the register rate limit slows bulk probing). Options: keep specific messages (best experience); generic error for emails only; or fully hide it ("check your inbox" either way), which needs email sending. Recommended: keep for now and revisit when you add email sending.
+- [ ] **Password policy.** Firebase's default minimum is 6 characters; the API can raise it at registration, but Firebase's client-side change/reset would bypass that. Recommended: require at least 10 characters in both places (API check plus the Firebase console password policy), no complexity rules. Optionally check against breached-password lists.
+- [ ] **Revocation check cost.** `RequireAuth` calls Firebase on every request to detect revoked or disabled accounts. Options: check every request (now); a 30-60 second cache; check only on writes; or no check (up to an hour of access after revocation). Recommended: keep as is until latency is measured, then add the short cache.
+- [ ] **Username characters and lookalikes.** Usernames are now unique ignoring case, but lookalike characters (for example a Cyrillic "а" for "a") and confusing punctuation are still allowed. Options: restrict to letters, digits, `_`, `-`, `.`; or normalize Unicode and reject confusables. Restricting is simpler but excludes non-Latin names.
+- [ ] **Bot protection on registration.** Verified email limits the damage from junk accounts but does not stop them being created. If bots show up, add Firebase App Check or a CAPTCHA.
+
 ## Operations
 
 - [ ] **Health check endpoint (code).** Add `GET /healthz` (including a database ping) for the load balancer.

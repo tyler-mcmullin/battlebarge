@@ -49,7 +49,8 @@ func TestValidation_Rejected(t *testing.T) {
 		{"unit: warband_id over 36 chars", "POST", "/units/create", `{"warband_id":"` + repeat("a", 37) + `","unit_name":"x"}`},
 		{"unit update: negative points", "PATCH", "/units/" + id, `{"points":-500}`},
 		{"unit update: empty name", "PATCH", "/units/" + id, `{"unit_name":""}`},
-		{"kills: zero", "PATCH", "/units/" + id + "/kills", `{"amount":0}`},
+		{"kills: amount missing", "PATCH", "/units/" + id + "/kills", `{}`},
+		{"kills: amount null", "PATCH", "/units/" + id + "/kills", `{"amount":null}`},
 		{"kills: above int32", "PATCH", "/units/" + id + "/kills", `{"amount":3000000000}`},
 		{"kills: above max", "PATCH", "/units/" + id + "/kills", `{"amount":1000001}`},
 		{"xp: below min", "PATCH", "/units/" + id + "/xp", `{"amount":-1000001}`},
@@ -125,6 +126,36 @@ func TestValidation_Accepted(t *testing.T) {
 		`{"warband_id":"`+wb.ID.String()+`","unit_name":"x","points":1000000,"bio":"`+repeat("b", 5000)+`"}`))
 	for _, amount := range []string{"1000000", "-1000000"} {
 		expect(t, call(r, "owner", http.MethodPatch, "/units/"+u.ID.String()+"/kills", `{"amount":`+amount+`}`), http.StatusOK)
+	}
+}
+
+// 0 is a valid amount for kills and XP: it succeeds and changes nothing.
+func TestIncrement_ZeroIsAllowed(t *testing.T) {
+	testutil.SetupDB(t)
+	testutil.InsertUser(t, "owner")
+	wb := testutil.InsertWarband(t, "owner", "W")
+	unit := testutil.InsertUnit(t, wb.ID, "Boss", 10)
+	r := newRouter()
+	path := "/units/" + unit.ID.String()
+
+	// a brand new unit starts at 0 kills and 0 XP, and adding 0 keeps it there
+	for _, suffix := range []string{"/kills", "/xp"} {
+		w := call(r, "owner", http.MethodPatch, path+suffix, `{"amount":0}`)
+		expect(t, w, http.StatusOK)
+		if got := decodeUnit(t, w); got.Kills != 0 || got.Experience != 0 {
+			t.Errorf("%s with 0: kills = %d, xp = %d; want both 0", suffix, got.Kills, got.Experience)
+		}
+	}
+
+	// after real gains, adding 0 leaves them as they were
+	expect(t, call(r, "owner", http.MethodPatch, path+"/kills", `{"amount":4}`), http.StatusOK)
+	expect(t, call(r, "owner", http.MethodPatch, path+"/xp", `{"amount":7}`), http.StatusOK)
+	for _, suffix := range []string{"/kills", "/xp"} {
+		w := call(r, "owner", http.MethodPatch, path+suffix, `{"amount":0}`)
+		expect(t, w, http.StatusOK)
+		if got := decodeUnit(t, w); got.Kills != 4 || got.Experience != 7 {
+			t.Errorf("%s with 0: kills = %d, xp = %d; want 4 and 7", suffix, got.Kills, got.Experience)
+		}
 	}
 }
 

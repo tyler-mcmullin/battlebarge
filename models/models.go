@@ -110,7 +110,7 @@ type CampaignWarband struct {
 // Validation limits (enforced by the binding tags below, and mirrored in
 // docs/openapi.yaml): names and titles 1-100 characters and not blank;
 // descriptions up to 2000 characters (unit bio 5000, perk description 1000);
-// point-style numbers 0-1000000; increments -1000000 to 1000000 and non-zero.
+// point-style numbers 0-1000000; increments -1000000 to 1000000 (0 is allowed).
 // "safetext" rejects NUL and control characters.
 type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email,max=255"`
@@ -149,8 +149,10 @@ type UpdateUnitRequest struct {
 	Points        *int    `json:"points" binding:"omitempty,min=0,max=1000000"`
 }
 
+// Amount is a pointer so a missing field (400) is distinguishable from an
+// explicit 0, which is allowed and leaves the value unchanged.
 type IncrementRequest struct {
-	Amount int `json:"amount" binding:"required,min=-1000000,max=1000000"`
+	Amount *int `json:"amount" binding:"required,min=-1000000,max=1000000"`
 }
 
 type AddPerkRequest struct {

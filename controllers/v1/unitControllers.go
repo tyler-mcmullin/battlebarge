@@ -252,7 +252,7 @@ func AddUnitKills(c *gin.Context) {
 		return
 	}
 
-	unit, err := repositories.IncrementUnitKills(id, req.Amount)
+	unit, err := repositories.IncrementUnitKills(id, *req.Amount)
 	if err != nil {
 		serverError(c, err)
 		return
@@ -304,7 +304,7 @@ func AddUnitXP(c *gin.Context) {
 		return
 	}
 
-	unit, err := repositories.IncrementUnitXP(id, req.Amount)
+	unit, err := repositories.IncrementUnitXP(id, *req.Amount)
 	if err != nil {
 		serverError(c, err)
 		return

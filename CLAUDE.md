@@ -12,7 +12,7 @@ Battlebarge is a Go (Gin) REST API for tracking tabletop-wargame warbands, units
 - Build / vet: `go build ./...`, `go vet ./...`
 - Firebase emulators (Auth on 9099, Firestore on 8000, UI enabled): `firebase emulators:start`
 - `.env` (gitignored) needs `FIREBASE_PROJECT_ID`, `POSTGRES_URL`, and for local dev `FIREBASE_AUTH_EMULATOR_HOST` / `FIRESTORE_EMULATOR_HOST`. `testlogin.html` (gitignored) is a local helper for obtaining ID tokens.
-- The Postgres schema is not in the repo (no migrations); the SQL in `repositories/` is the only source of truth for table/column names.
+- The Postgres schema is not in the repo; the SQL in `repositories/` is the source of truth for table/column names. `db/migrations/` holds hand-run SQL files (currently only the unit_perks migration).
 
 ## Architecture
 
@@ -24,7 +24,7 @@ Layered, with one file per resource in each layer (`auth`, `user`, `warband`, `u
 - `routes/`: each resource gets a group; public routes are registered directly, authenticated ones go on a sub-group with `middleware.RequireAuth()`.
 - `middleware/`: `RequireAuth()` verifies the Firebase Bearer token and sets `uid` in the Gin context (`middleware.ContextUIDKey`). `LoadUser()` (must be chained after `RequireAuth`) additionally loads the full `models.User` from Postgres into context (`ContextUserKey`). Use `RequireAuth` alone unless profile data is needed.
 - `controllers/v1/`: bind JSON into request structs from `models/`, read the uid from context, enforce ownership (e.g. `repositories.IsWarbandOwner` before creating a unit; returns 404 rather than 403 for non-owned resources), then call repositories.
-- `repositories/`: raw SQL via pgx, no ORM. Complex fields such as `Unit.Perks` are stored as JSONB and marshalled/unmarshalled in the repository.
+- `repositories/`: raw SQL via pgx, no ORM. `Unit.Perks` lives in its own `unit_perks` table (FK to `units`, ON DELETE CASCADE); unit repository functions load perks after fetching units.
 - `models/models.go`: all domain structs and request DTOs in one file. Campaign structs (`CampaignSettings`, `Campaign`, `CampaignChapter`) exist but have no routes/repositories yet.
 - IDs are `uuid.UUID` generated in controllers, except users, whose ID is the Firebase UID string.
 

@@ -29,6 +29,10 @@ Layered, with one file per resource in each layer (`auth`, `user`, `warband`, `u
 - `models/models.go`: all domain structs and request DTOs in one file. Campaigns: a campaign has chapters, any number of named/renamable teams, and member warbands (`campaign_warbands`, one team per warband per campaign; a warband can be in many campaigns). Anyone with a campaign ID can join a warband they own; only the campaign owner manages chapters and teams; the campaign owner or warband owner can move/remove a member. A team with warbands on it cannot be deleted (409).
 - IDs are `uuid.UUID` generated in controllers, except users, whose ID is the Firebase UID string.
 
+## API documentation
+
+`docs/openapi.yaml` is the OpenAPI spec for the frontend. `controllers/v1/openapi_test.go` fails if a route is added, removed, or renamed without updating the spec, or if a real response gains, loses, or nulls a field the schema lists. When you change an endpoint, request body, or response shape, update the spec in the same change.
+
 ## Documentation convention
 
 Every function except `main` has a doc comment directly above it in this format, so it shows on hover:

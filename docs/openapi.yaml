@@ -1,0 +1,932 @@
+openapi: 3.0.3
+info:
+  title: Battlebarge API
+  version: 1.0.0
+  description: |
+    REST API for tracking warbands, units, and campaigns.
+
+    **Authentication.** Sign in with the Firebase client SDK and send the
+    resulting ID token as `Authorization: Bearer <token>`. New users first call
+    `POST /auth/register`, then sign in with the same email and password.
+    Operations marked with a lock require a token; the rest are public.
+
+    **Errors.** Every error response has the shape `{"error": "<message>"}`.
+    A 404 is also returned when a resource exists but belongs to someone else,
+    and when an ID in the URL is not a valid UUID.
+
+    **IDs and times.** IDs are UUIDs (users are the exception: their ID is the
+    Firebase UID). Timestamps are RFC 3339 strings.
+
+    **CORS.** Browsers may call the API from the origins listed in the server's
+    `CORS_ALLOWED_ORIGINS` setting.
+servers:
+  - url: http://localhost:8080
+    description: Local development (the port is set by `PORT`)
+tags:
+  - name: Auth
+  - name: Users
+  - name: Warbands
+  - name: Units
+  - name: Campaigns
+    description: Campaign details, settings, and ownership.
+  - name: Campaign chapters
+  - name: Campaign teams
+    description: Any number of named, renamable teams per campaign.
+  - name: Campaign warbands
+    description: Which warbands have joined a campaign, and on which team.
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      description: |
+        Creates the Firebase account and the matching profile. Sign in with
+        the Firebase client SDK afterwards to get an ID token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: User created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: user created }
+                  user_id: { type: string, description: Firebase UID. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: Email already registered, or username already taken.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get the signed-in user's profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401':
+          description: Missing or invalid token, or no profile exists for the token's user.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /warbands:
+    get:
+      tags: [Warbands]
+      summary: List the signed-in user's warbands
+      description: Newest first, each with its units and computed totals.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The user's warbands (empty array if none).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Warband' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /warbands/create:
+    post:
+      tags: [Warbands]
+      summary: Create a warband
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWarbandRequest' }
+      responses:
+        '201':
+          description: The new warband. Omitted optional fields default to empty or 0.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Warband' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /warbands/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Warbands]
+      summary: Get a warband
+      description: Public. Includes its units and computed totals.
+      responses:
+        '200':
+          description: The warband.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Warband' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Warbands]
+      summary: Update a warband
+      description: Only the fields you send are changed. Owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWarbandRequest' }
+      responses:
+        '200':
+          description: The updated warband.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Warband' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Warbands]
+      summary: Delete a warband
+      description: Also deletes its units and removes it from any campaigns. Owner only.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /units/create:
+    post:
+      tags: [Units]
+      summary: Create a unit in one of your warbands
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUnitRequest' }
+      responses:
+        '201':
+          description: The new unit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '400':
+          description: Invalid body, or `warband_id` is not a valid UUID.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: The warband does not exist or is not yours.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /units/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Units]
+      summary: Get a unit
+      description: Public.
+      responses:
+        '200':
+          description: The unit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Units]
+      summary: Update a unit
+      description: Only the fields you send are changed. Only the owner of the unit's warband may do this.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateUnitRequest' }
+      responses:
+        '200':
+          description: The updated unit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Units]
+      summary: Delete a unit
+      description: Only the owner of the unit's warband may do this.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /units/{id}/kills:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Units]
+      summary: Add to a unit's kills
+      description: The amount may be negative; the total never goes below 0. Owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncrementRequest' }
+      responses:
+        '200':
+          description: The updated unit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /units/{id}/xp:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Units]
+      summary: Add to a unit's experience
+      description: The amount may be negative; the total never goes below 0. Owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncrementRequest' }
+      responses:
+        '200':
+          description: The updated unit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /units/{id}/perk:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    patch:
+      tags: [Units]
+      summary: Add a perk or scar to a unit
+      description: The server generates the perk's ID. Owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddPerkRequest' }
+      responses:
+        '200':
+          description: The updated unit, including the new perk.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /units/{id}/perk/{perkId}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - name: perkId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [Units]
+      summary: Remove a perk or scar from a unit
+      description: Owner only.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The updated unit.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Unit' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: The unit or perk does not exist, or the unit is not yours.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns:
+    get:
+      tags: [Campaigns]
+      summary: List my campaigns
+      description: Campaigns the user owns or has a warband in, newest first, each with chapters, teams, and warbands.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The user's campaigns (empty array if none).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Campaign' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/create:
+    post:
+      tags: [Campaigns]
+      summary: Create a campaign
+      description: The new campaign has no teams; the owner adds them before warbands can join.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCampaignRequest' }
+      responses:
+        '201':
+          description: The new campaign.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Campaign' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Campaigns]
+      summary: Get a campaign
+      description: Public. Anyone with the ID can view it; the ID is also what a player needs to join.
+      responses:
+        '200':
+          description: The campaign with its chapters, teams, and member warbands.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Campaign' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    patch:
+      tags: [Campaigns]
+      summary: Update a campaign
+      description: Only the fields you send are changed. Campaign owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCampaignRequest' }
+      responses:
+        '200':
+          description: The updated campaign.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Campaign' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Campaigns]
+      summary: Delete a campaign
+      description: Also deletes its chapters, teams, and memberships. The warbands themselves are kept. Campaign owner only.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/{id}/chapters:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      tags: [Campaign chapters]
+      summary: Add a chapter
+      description: Appended after the last chapter unless `sort_order` is given. Campaign owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateChapterRequest' }
+      responses:
+        '201':
+          description: The new chapter.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CampaignChapter' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/{id}/chapters/{chapterId}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - name: chapterId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Campaign chapters]
+      summary: Update or reorder a chapter
+      description: Only the fields you send are changed. Campaign owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateChapterRequest' }
+      responses:
+        '200':
+          description: The updated chapter.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CampaignChapter' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Campaign chapters]
+      summary: Delete a chapter
+      description: Campaign owner only.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/{id}/teams:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      tags: [Campaign teams]
+      summary: Add a team
+      description: A campaign can have any number of teams. Names are unique within a campaign. Campaign owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TeamRequest' }
+      responses:
+        '201':
+          description: The new team.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CampaignTeam' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The campaign already has a team with that name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/{id}/teams/{teamId}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - name: teamId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Campaign teams]
+      summary: Rename a team
+      description: Campaign owner only.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TeamRequest' }
+      responses:
+        '200':
+          description: The renamed team.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CampaignTeam' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: The campaign already has a team with that name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Campaign teams]
+      summary: Delete a team
+      description: Only teams with no warbands on them can be deleted. Campaign owner only.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Deleted. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Warbands are still on the team; move them first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/{id}/warbands:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      tags: [Campaign warbands]
+      summary: Join a campaign with one of your warbands
+      description: |
+        Anyone who knows the campaign ID can join a warband they own. A warband
+        can be in many campaigns but only once in each, on exactly one team.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JoinCampaignRequest' }
+      responses:
+        '201':
+          description: The campaign, including the new membership.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Campaign' }
+        '400':
+          description: Invalid body, or `warband_id` or `team_id` is not a valid UUID.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: The campaign does not exist, the warband is not yours, or the team is not in this campaign.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: The warband is already in this campaign.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/{id}/warbands/{warbandId}:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+      - name: warbandId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [Campaign warbands]
+      summary: Move a warband to another team
+      description: Allowed for the campaign owner or the warband's owner.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeTeamRequest' }
+      responses:
+        '200':
+          description: The campaign with the updated membership.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Campaign' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: The warband or team is not in this campaign, or you own neither the campaign nor the warband.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Campaign warbands]
+      summary: Remove a warband from a campaign
+      description: Allowed for the campaign owner or the warband's owner. The warband itself is kept.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Removed. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: The warband is not in this campaign, or you own neither the campaign nor the warband.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase ID token
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: The request body is malformed or fails validation.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing, malformed, or expired token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: |
+        Not found. Also returned when the resource belongs to someone else, or
+        when an ID in the URL is not a valid UUID.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Unexpected server error. Details are logged server-side, not returned.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: internal server error }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    User:
+      type: object
+      properties:
+        id: { type: string, description: Firebase UID. }
+        email: { type: string, format: email }
+        username: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Perk:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        is_scar:
+          type: boolean
+          description: Scars count against crusade points; perks count for them.
+
+    Unit:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        warband_id: { type: string, format: uuid }
+        unit_name: { type: string }
+        narrative_name: { type: string }
+        bio: { type: string }
+        points: { type: integer }
+        kills: { type: integer, minimum: 0 }
+        experience: { type: integer, minimum: 0 }
+        perks:
+          type: array
+          items: { $ref: '#/components/schemas/Perk' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Warband:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, description: Owner's Firebase UID. }
+        name: { type: string }
+        faction: { type: string }
+        description: { type: string }
+        requisition_points: { type: integer }
+        supply_limit: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        units:
+          type: array
+          items: { $ref: '#/components/schemas/Unit' }
+        num_units: { type: integer, description: Number of units. }
+        total_points_cost: { type: integer, description: Sum of the units' points. }
+        crusade_points:
+          type: integer
+          description: One per perk and minus one per scar, across all units.
+
+    CampaignSettings:
+      type: object
+      properties:
+        points_per_win: { type: integer }
+        points_per_loss: { type: integer }
+        starting_requisition: { type: integer }
+
+    CampaignChapter:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        campaign_id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        sort_order: { type: integer, description: Chapters are listed in ascending order. }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CampaignTeam:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        campaign_id: { type: string, format: uuid }
+        name: { type: string, maxLength: 50 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    CampaignWarband:
+      type: object
+      description: A warband's membership in a campaign.
+      properties:
+        campaign_id: { type: string, format: uuid }
+        warband_id: { type: string, format: uuid }
+        warband_name: { type: string }
+        team_id: { type: string, format: uuid }
+        joined_at: { type: string, format: date-time }
+
+    Campaign:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        owner_id: { type: string, description: Owner's Firebase UID. }
+        name: { type: string }
+        description: { type: string }
+        settings: { $ref: '#/components/schemas/CampaignSettings' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        chapters:
+          type: array
+          items: { $ref: '#/components/schemas/CampaignChapter' }
+        teams:
+          type: array
+          items: { $ref: '#/components/schemas/CampaignTeam' }
+        warbands:
+          type: array
+          items: { $ref: '#/components/schemas/CampaignWarband' }
+
+    RegisterRequest:
+      type: object
+      required: [email, username, password]
+      properties:
+        email: { type: string, format: email, maxLength: 255 }
+        username: { type: string, maxLength: 50, description: Must be unique. }
+        password:
+          type: string
+          format: password
+          description: Subject to Firebase's password rules.
+
+    CreateWarbandRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        faction: { type: string }
+        description: { type: string }
+        requisition_points: { type: integer }
+        supply_limit: { type: integer }
+
+    UpdateWarbandRequest:
+      type: object
+      description: Send only the fields to change.
+      properties:
+        name: { type: string }
+        faction: { type: string }
+        description: { type: string }
+        requisition_points: { type: integer }
+        supply_limit: { type: integer }
+
+    CreateUnitRequest:
+      type: object
+      required: [warband_id, unit_name]
+      properties:
+        warband_id: { type: string, format: uuid, description: A warband you own. }
+        unit_name: { type: string }
+        narrative_name: { type: string }
+        bio: { type: string }
+        points: { type: integer }
+
+    UpdateUnitRequest:
+      type: object
+      description: Send only the fields to change.
+      properties:
+        unit_name: { type: string }
+        narrative_name: { type: string }
+        bio: { type: string }
+        points: { type: integer }
+
+    IncrementRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: integer
+          description: Positive or negative. Must be non-zero (0 is rejected as missing).
+
+    AddPerkRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        is_scar: { type: boolean, default: false }
+
+    CreateCampaignRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        points_per_win: { type: integer }
+        points_per_loss: { type: integer }
+        starting_requisition: { type: integer }
+
+    UpdateCampaignRequest:
+      type: object
+      description: Send only the fields to change.
+      properties:
+        name: { type: string }
+        description: { type: string }
+        points_per_win: { type: integer }
+        points_per_loss: { type: integer }
+        starting_requisition: { type: integer }
+
+    CreateChapterRequest:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        sort_order:
+          type: integer
+          description: Defaults to one after the last chapter. An explicit 0 is honoured.
+
+    UpdateChapterRequest:
+      type: object
+      description: Send only the fields to change.
+      properties:
+        title: { type: string }
+        description: { type: string }
+        sort_order: { type: integer }
+
+    TeamRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 50 }
+
+    JoinCampaignRequest:
+      type: object
+      required: [warband_id, team_id]
+      properties:
+        warband_id: { type: string, format: uuid, description: A warband you own. }
+        team_id: { type: string, format: uuid, description: A team in this campaign. }
+
+    ChangeTeamRequest:
+      type: object
+      required: [team_id]
+      properties:
+        team_id: { type: string, format: uuid, description: A team in this campaign. }

@@ -37,11 +37,11 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 - [ ] **Account deletion.** No delete-user endpoint, and `warbands.user_id` has no `ON DELETE` action, so deleting a user with warbands fails. Needed for account deletion requests.
 - [ ] **Profile management.** No endpoint to change username or email.
 - [ ] **Pagination.** List endpoints return everything; fine at launch size.
-- [ ] **API documentation.** OpenAPI spec or endpoint reference for the frontend.
 - [ ] **Schema in the repo.** Keep a current schema file so `testutil/db.go` and the real database cannot drift.
 
 ## Done
 
+- [x] OpenAPI spec in `docs/openapi.yaml`, with tests that keep it in step with the routes and response shapes.
 - [x] `.env` is optional: `main.go` loads it from the working directory or its parent when present, real environment variables win, and a missing file is fine (a malformed one still stops startup).
 - [x] Port comes from `PORT` (default 8080).
 - [x] CORS middleware (`middleware.CORS`, configured by `CORS_ALLOWED_ORIGINS`).

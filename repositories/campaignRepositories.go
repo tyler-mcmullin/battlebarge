@@ -64,7 +64,7 @@ func withCampaignDetails(c models.Campaign) (models.Campaign, error) {
 	return c, nil
 }
 
-// Arguments: campaign (models.Campaign) - campaign record to insert
+// Arguments: campaign (models.Campaign) - campaign record to insert, with JoinCode set (see NewJoinCode)
 //
 // Returns: error - ErrLimitReached if the owner already has MaxCampaignsPerUser campaigns, or another error if the insert fails
 //
@@ -88,15 +88,15 @@ func CreateCampaign(campaign models.Campaign) error {
 		INSERT INTO campaigns (
 			id, owner_id, name, description,
 			points_per_win, points_per_loss, starting_requisition,
-			created_at, updated_at
+			join_code, created_at, updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 
 	_, err = tx.Exec(ctx, query,
 		campaign.ID, campaign.OwnerID, campaign.Name, campaign.Description,
 		campaign.Settings.PointsPerWin, campaign.Settings.PointsPerLoss, campaign.Settings.StartingRequisition,
-		campaign.CreatedAt, campaign.UpdatedAt,
+		campaign.JoinCode, campaign.CreatedAt, campaign.UpdatedAt,
 	)
 	if err != nil {
 		return err
@@ -498,12 +498,12 @@ func GetCampaignWarbands(campaignID string) ([]models.CampaignWarband, error) {
 	return members, rows.Err()
 }
 
-// Arguments: campaignID (string) - campaign ID; warbandID (string) - warband ID; teamID (string) - team to join
+// Arguments: campaignID (string) - campaign ID; warbandID (string) - warband ID; teamID (string) - team to join; joinCode (*string) - the code the caller supplied, or nil to skip the check for a caller who is already authorized (the campaign owner)
 //
-// Returns: error - pgx.ErrNoRows if the campaign or team does not exist, ErrLimitReached if the campaign already has MaxWarbandsPerCampaign warbands, SQLSTATE 23505 if the warband is already in the campaign, SQLSTATE 23503 if the warband does not exist
+// Returns: error - pgx.ErrNoRows if the campaign or team does not exist, ErrInvalidJoinCode if joinCode is given and does not match, ErrLimitReached if the campaign already has MaxWarbandsPerCampaign warbands, SQLSTATE 23505 if the warband is already in the campaign, SQLSTATE 23503 if the warband does not exist
 //
 // Adds a warband to a campaign on the given team
-func JoinCampaign(campaignID string, warbandID string, teamID string) error {
+func JoinCampaign(campaignID string, warbandID string, teamID string, joinCode *string) error {
 	ctx := context.Background()
 
 	tx, err := db.PGClient.Begin(ctx)
@@ -511,6 +511,18 @@ func JoinCampaign(campaignID string, warbandID string, teamID string) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
+
+	// check the code first so a wrong code learns nothing about teams or limits
+	if joinCode != nil {
+		var actual string
+		err = tx.QueryRow(ctx, `SELECT join_code FROM campaigns WHERE id = $1`, campaignID).Scan(&actual)
+		if err != nil {
+			return err
+		}
+		if !joinCodeMatches(*joinCode, actual) {
+			return ErrInvalidJoinCode
+		}
+	}
 
 	err = lockAndCheckLimit(ctx, tx, "campaigns", campaignID,
 		`SELECT count(*) FROM campaign_warbands WHERE campaign_id = $1`, MaxWarbandsPerCampaign)

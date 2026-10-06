@@ -70,6 +70,11 @@ type Campaign struct {
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   time.Time        `json:"updated_at"`
 
+	// JoinCode is only ever filled in for the campaign's owner. It is never
+	// loaded by the repository queries, so public responses cannot include it
+	// by accident; controllers set it explicitly for the owner.
+	JoinCode string `json:"join_code,omitempty"`
+
 	// Populated at fetch time from their own tables.
 	Chapters []CampaignChapter `json:"chapters"`
 	Teams    []CampaignTeam    `json:"teams"`
@@ -197,6 +202,12 @@ type TeamRequest struct {
 type JoinCampaignRequest struct {
 	WarbandID string `json:"warband_id" binding:"required,max=36"`
 	TeamID    string `json:"team_id" binding:"required,max=36"`
+	// JoinCode is required unless the caller owns the campaign.
+	JoinCode string `json:"join_code" binding:"omitempty,max=32"`
+}
+
+type JoinCodeResponse struct {
+	JoinCode string `json:"join_code"`
 }
 
 type ChangeTeamRequest struct {

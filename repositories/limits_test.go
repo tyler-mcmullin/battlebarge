@@ -117,12 +117,12 @@ func TestLimit_ChaptersTeamsAndMembersPerCampaign(t *testing.T) {
 
 	for i := 0; i < repositories.MaxWarbandsPerCampaign; i++ {
 		wb := testutil.InsertWarband(t, "owner", "w")
-		if err := repositories.JoinCampaign(cid, wb.ID.String(), team.ID.String()); err != nil {
+		if err := repositories.JoinCampaign(cid, wb.ID.String(), team.ID.String(), nil); err != nil {
 			t.Fatalf("member %d: %v", i, err)
 		}
 	}
 	extra := testutil.InsertWarband(t, "owner", "extra")
-	if err := repositories.JoinCampaign(cid, extra.ID.String(), team.ID.String()); !errors.Is(err, repositories.ErrLimitReached) {
+	if err := repositories.JoinCampaign(cid, extra.ID.String(), team.ID.String(), nil); !errors.Is(err, repositories.ErrLimitReached) {
 		t.Errorf("members: err = %v, want ErrLimitReached", err)
 	}
 }

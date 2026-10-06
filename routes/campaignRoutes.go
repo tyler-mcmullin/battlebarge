@@ -1,7 +1,10 @@
 package routes
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
+	"golang.org/x/time/rate"
 
 	controllers "battlebarge/controllers/v1"
 	"battlebarge/middleware"
@@ -34,7 +37,12 @@ func GetCampaignControllers(r *gin.Engine) {
 	priv.PATCH("/:id/teams/:teamId", controllers.RenameTeam)
 	priv.DELETE("/:id/teams/:teamId", controllers.DeleteTeam)
 
-	priv.POST("/:id/warbands", controllers.JoinCampaign)
+	priv.GET("/:id/join-code", controllers.GetCampaignJoinCode)
+	priv.POST("/:id/join-code/rotate", controllers.RotateCampaignJoinCode)
+
+	// Joining is the one route where a stranger can guess a secret (the join
+	// code), so it gets its own tight per-IP limit: 10 attempts, then 1 per 6s.
+	priv.POST("/:id/warbands", middleware.RateLimit(rate.Every(6*time.Second), 10), controllers.JoinCampaign)
 	priv.PATCH("/:id/warbands/:warbandId", controllers.ChangeWarbandTeam)
 	priv.DELETE("/:id/warbands/:warbandId", controllers.LeaveCampaign)
 }

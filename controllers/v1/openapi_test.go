@@ -134,6 +134,11 @@ func checkShape(t *testing.T, spec map[string]any, schema map[string]any, value 
 		for key, p := range props {
 			v, ok := obj[key]
 			if !ok {
+				// fields marked x-owner-only are deliberately left out of responses
+				// the owner is not the audience for
+				if asMap(p)["x-owner-only"] == true {
+					continue
+				}
 				t.Errorf("%s.%s is in the schema but not returned", path, key)
 				continue
 			}

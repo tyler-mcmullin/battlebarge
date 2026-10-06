@@ -16,7 +16,8 @@ import (
 
 // schemaSQL mirrors the tables the repositories expect. The users, warbands,
 // units and unit_perks tables are copied from a pg_dump of the real database;
-// the campaign tables come from db/migrations/002_campaigns.sql. The repo keeps
+// the campaign tables come from db/migrations/002_campaigns.sql plus
+// 003_campaign_join_codes.sql. The repo keeps
 // no schema file, so keep this in sync when the real schema changes.
 const schemaSQL = `
 CREATE TABLE users (
@@ -71,6 +72,7 @@ CREATE TABLE campaigns (
 	points_per_win       integer NOT NULL DEFAULT 0,
 	points_per_loss      integer NOT NULL DEFAULT 0,
 	starting_requisition integer NOT NULL DEFAULT 0,
+	join_code            text NOT NULL,
 	created_at           timestamptz NOT NULL DEFAULT now(),
 	updated_at           timestamptz NOT NULL DEFAULT now()
 );
@@ -252,17 +254,17 @@ func InsertUnit(t *testing.T, warbandID uuid.UUID, name string, points int) mode
 
 // Arguments: t (*testing.T) - the running test; ownerID (string) - owning user ID; name (string) - campaign name
 //
-// Returns: models.Campaign - the inserted campaign (without chapters, teams, or warbands)
+// Returns: models.Campaign - the inserted campaign (without chapters, teams, or warbands), with JoinCode set to "TESTCODE01"
 //
 // Inserts a campaign directly into the test database
 func InsertCampaign(t *testing.T, ownerID, name string) models.Campaign {
 	t.Helper()
 
 	now := time.Now()
-	c := models.Campaign{ID: uuid.New(), OwnerID: ownerID, Name: name, CreatedAt: now, UpdatedAt: now}
+	c := models.Campaign{ID: uuid.New(), OwnerID: ownerID, Name: name, JoinCode: "TESTCODE01", CreatedAt: now, UpdatedAt: now}
 	_, err := db.PGClient.Exec(context.Background(),
-		`INSERT INTO campaigns (id, owner_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
-		c.ID, c.OwnerID, c.Name, c.CreatedAt, c.UpdatedAt)
+		`INSERT INTO campaigns (id, owner_id, name, join_code, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+		c.ID, c.OwnerID, c.Name, c.JoinCode, c.CreatedAt, c.UpdatedAt)
 	if err != nil {
 		t.Fatalf("insert campaign: %v", err)
 	}

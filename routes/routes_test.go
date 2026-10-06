@@ -1,10 +1,16 @@
 package routes_test
 
 import (
+	"context"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
+	"battlebarge/middleware"
 	"battlebarge/routes"
 )
 
@@ -44,6 +50,8 @@ func TestRoutesRegistered(t *testing.T) {
 		"POST /campaigns/:id/teams",
 		"PATCH /campaigns/:id/teams/:teamId",
 		"DELETE /campaigns/:id/teams/:teamId",
+		"GET /campaigns/:id/join-code",
+		"POST /campaigns/:id/join-code/rotate",
 		"POST /campaigns/:id/warbands",
 		"PATCH /campaigns/:id/warbands/:warbandId",
 		"DELETE /campaigns/:id/warbands/:warbandId",
@@ -97,6 +105,8 @@ func TestProtectedRoutesRequireAuth(t *testing.T) {
 		{"POST", "/campaigns/abc/teams"},
 		{"PATCH", "/campaigns/abc/teams/def"},
 		{"DELETE", "/campaigns/abc/teams/def"},
+		{"GET", "/campaigns/abc/join-code"},
+		{"POST", "/campaigns/abc/join-code/rotate"},
 		{"POST", "/campaigns/abc/warbands"},
 		{"PATCH", "/campaigns/abc/warbands/def"},
 		{"DELETE", "/campaigns/abc/warbands/def"},
@@ -132,5 +142,37 @@ func TestRegisterIsRateLimited(t *testing.T) {
 	}
 	if w.Header().Get("Retry-After") == "" {
 		t.Error("429 should include Retry-After")
+	}
+}
+
+// Joining is the one route where a stranger can guess a secret, so it has its
+// own tight limit. A fake verifier lets requests through auth, and invalid
+// bodies are answered 400 before any database work.
+func TestJoinIsRateLimited(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	defer middleware.SetTokenVerifier(func(ctx context.Context, idToken string) (*auth.Token, error) {
+		return &auth.Token{UID: "u1", Claims: map[string]any{"email_verified": true}}, nil
+	})()
+
+	r := gin.New()
+	routes.GetCampaignControllers(r)
+	path := "/campaigns/" + uuid.NewString() + "/warbands"
+
+	post := func() int {
+		req := httptest.NewRequest("POST", path, strings.NewReader(`{}`))
+		req.Header.Set("Authorization", "Bearer t")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		return w.Code
+	}
+
+	const burst = 10
+	for i := 1; i <= burst; i++ {
+		if code := post(); code != 400 {
+			t.Fatalf("attempt %d: status = %d, want 400", i, code)
+		}
+	}
+	if code := post(); code != 429 {
+		t.Errorf("attempt %d: status = %d, want 429", burst+1, code)
 	}
 }

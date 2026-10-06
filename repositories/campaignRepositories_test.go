@@ -63,7 +63,7 @@ func TestGetCampaignsForUser(t *testing.T) {
 	testutil.InsertCampaign(t, "stranger", "unrelated")
 	team := testutil.InsertTeam(t, joined.ID, "Red")
 	wb := testutil.InsertWarband(t, "owner", "W")
-	if err := repositories.JoinCampaign(joined.ID.String(), wb.ID.String(), team.ID.String()); err != nil {
+	if err := repositories.JoinCampaign(joined.ID.String(), wb.ID.String(), team.ID.String(), nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -259,7 +259,7 @@ func TestJoinMoveAndLeaveCampaign(t *testing.T) {
 	wb := testutil.InsertWarband(t, "player", "Da Boyz")
 	cid, wid := c.ID.String(), wb.ID.String()
 
-	if err := repositories.JoinCampaign(cid, wid, red.ID.String()); err != nil {
+	if err := repositories.JoinCampaign(cid, wid, red.ID.String(), nil); err != nil {
 		t.Fatalf("JoinCampaign: %v", err)
 	}
 	members, err := repositories.GetCampaignWarbands(cid)
@@ -271,16 +271,16 @@ func TestJoinMoveAndLeaveCampaign(t *testing.T) {
 	}
 
 	// once per campaign
-	if err := repositories.JoinCampaign(cid, wid, blue.ID.String()); pgCode(err) != "23505" {
+	if err := repositories.JoinCampaign(cid, wid, blue.ID.String(), nil); pgCode(err) != "23505" {
 		t.Errorf("rejoin err = %v, want 23505", err)
 	}
 	// a team from another campaign is rejected
 	wb2 := testutil.InsertWarband(t, "player", "Second")
-	if err := repositories.JoinCampaign(cid, wb2.ID.String(), foreign.ID.String()); !errors.Is(err, pgx.ErrNoRows) {
+	if err := repositories.JoinCampaign(cid, wb2.ID.String(), foreign.ID.String(), nil); !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("foreign team err = %v, want pgx.ErrNoRows", err)
 	}
 	// a warband can be in several campaigns
-	if err := repositories.JoinCampaign(other.ID.String(), wid, foreign.ID.String()); err != nil {
+	if err := repositories.JoinCampaign(other.ID.String(), wid, foreign.ID.String(), nil); err != nil {
 		t.Errorf("joining a second campaign should work: %v", err)
 	}
 
@@ -326,7 +326,7 @@ func TestCampaignCascades(t *testing.T) {
 	team := testutil.InsertTeam(t, c.ID, "Red")
 	wb := testutil.InsertWarband(t, "owner", "W")
 	cid := c.ID.String()
-	if err := repositories.JoinCampaign(cid, wb.ID.String(), team.ID.String()); err != nil {
+	if err := repositories.JoinCampaign(cid, wb.ID.String(), team.ID.String(), nil); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now()
@@ -359,7 +359,7 @@ func TestDeletingWarbandLeavesCampaign(t *testing.T) {
 	c := testutil.InsertCampaign(t, "owner", "C")
 	team := testutil.InsertTeam(t, c.ID, "Red")
 	wb := testutil.InsertWarband(t, "owner", "W")
-	if err := repositories.JoinCampaign(c.ID.String(), wb.ID.String(), team.ID.String()); err != nil {
+	if err := repositories.JoinCampaign(c.ID.String(), wb.ID.String(), team.ID.String(), nil); err != nil {
 		t.Fatal(err)
 	}
 

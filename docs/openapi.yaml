@@ -10,6 +10,13 @@ info:
     `POST /auth/register`, then sign in with the same email and password.
     Operations marked with a lock require a token; the rest are public.
 
+    **Joining a campaign.** A campaign's ID is public, so joining also needs
+    its secret join code. Only the campaign's owner can see the code (in the
+    response when creating the campaign, in `GET /campaigns`, or from
+    `GET /campaigns/{id}/join-code`) and share it with players. The owner can
+    replace the code at any time, which stops the old one working without
+    removing anyone who already joined.
+
     **Errors.** Every error response has the shape `{"error": "<message>"}`.
     A 404 is also returned when a resource exists but belongs to someone else,
     and when an ID in the URL is not a valid UUID.
@@ -610,6 +617,44 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '500': { $ref: '#/components/responses/ServerError' }
 
+  /campaigns/{id}/join-code:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    get:
+      tags: [Campaigns]
+      summary: Get the campaign's join code
+      description: Campaign owner only. Share it with the players you want to let in.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The join code.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JoinCodeResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /campaigns/{id}/join-code/rotate:
+    parameters:
+      - { $ref: '#/components/parameters/Id' }
+    post:
+      tags: [Campaigns]
+      summary: Replace the campaign's join code
+      description: |
+        Campaign owner only. The old code stops working immediately. Warbands
+        that already joined stay in the campaign.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: The new join code.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JoinCodeResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /campaigns/{id}/warbands:
     parameters:
       - { $ref: '#/components/parameters/Id' }
@@ -617,8 +662,10 @@ paths:
       tags: [Campaign warbands]
       summary: Join a campaign with one of your warbands
       description: |
-        Anyone who knows the campaign ID can join a warband they own. A warband
-        can be in many campaigns but only once in each, on exactly one team.
+        Needs the campaign's join code (not just its public ID), unless you own
+        the campaign. A warband can be in many campaigns but only once in each,
+        on exactly one team. Limited to 10 attempts, then 1 per 6 seconds, per
+        client IP.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -637,6 +684,13 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: |
+            The join code is missing or wrong (`join code required` or
+            `invalid join code`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '404':
           description: The campaign does not exist, the warband is not yours, or the team is not in this campaign.
           content:
@@ -845,6 +899,13 @@ components:
         settings: { $ref: '#/components/schemas/CampaignSettings' }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+        join_code:
+          type: string
+          x-owner-only: true
+          description: |
+            The secret players need to join. Only present for the campaign's
+            owner: in the response to creating a campaign and in the owner's
+            `GET /campaigns`. Never in public responses.
         chapters:
           type: array
           items: { $ref: '#/components/schemas/CampaignChapter' }
@@ -976,6 +1037,17 @@ components:
       properties:
         warband_id: { type: string, format: uuid, description: A warband you own. }
         team_id: { type: string, format: uuid, description: A team in this campaign. }
+        join_code:
+          type: string
+          maxLength: 32
+          description: |
+            The campaign's join code, from its owner. Required unless you own
+            the campaign. Case, spaces and hyphens are ignored.
+
+    JoinCodeResponse:
+      type: object
+      properties:
+        join_code: { type: string }
 
     ChangeTeamRequest:
       type: object

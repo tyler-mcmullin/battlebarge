@@ -42,7 +42,7 @@ func requireCampaignOwner(c *gin.Context, campaignID string, uid string) bool {
 //
 // Returns: None (responds 201 with the campaign; 400 on bad input; 401 if unauthenticated; 409 if the user already owns the maximum number of campaigns)
 //
-// POST /campaigns/create. Creates a campaign owned by the authenticated user, applying defaults for omitted settings
+// POST /campaigns/create. Creates a campaign owned by the authenticated user, applying defaults for omitted settings. The response includes the campaign's join_code, which only the owner can see
 func CreateCampaign(c *gin.Context) {
 	var req models.CreateCampaignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -55,11 +55,18 @@ func CreateCampaign(c *gin.Context) {
 		return
 	}
 
+	joinCode, err := repositories.NewJoinCode()
+	if err != nil {
+		serverError(c, err)
+		return
+	}
+
 	now := time.Now()
 	campaign := models.Campaign{
 		ID:        uuid.New(),
 		OwnerID:   uid,
 		Name:      req.Name,
+		JoinCode:  joinCode,
 		CreatedAt: now,
 		UpdatedAt: now,
 		Chapters:  []models.CampaignChapter{},
@@ -95,7 +102,7 @@ func CreateCampaign(c *gin.Context) {
 //
 // Returns: None (responds 200 with the campaigns the user owns or has a warband in; 401 if unauthenticated)
 //
-// GET /campaigns. Lists the authenticated user's campaigns
+// GET /campaigns. Lists the authenticated user's campaigns; join_code is included only on campaigns they own
 func GetMyCampaigns(c *gin.Context) {
 	uid, ok := requireUID(c)
 	if !ok {
@@ -106,6 +113,19 @@ func GetMyCampaigns(c *gin.Context) {
 	if err != nil {
 		serverError(c, err)
 		return
+	}
+
+	// the join code is only shown for campaigns the user owns
+	for i := range campaigns {
+		if campaigns[i].OwnerID != uid {
+			continue
+		}
+		code, err := repositories.GetJoinCode(campaigns[i].ID.String())
+		if err != nil {
+			serverError(c, err)
+			return
+		}
+		campaigns[i].JoinCode = code
 	}
 
 	c.JSON(http.StatusOK, campaigns)
@@ -444,9 +464,9 @@ func DeleteTeam(c *gin.Context) {
 
 // Arguments: c (gin context)
 //
-// Returns: None (responds 201 with the updated campaign; 400 on bad input or malformed warband_id/team_id; 401 if unauthenticated; 404 if the campaign id is malformed, the warband is not owned by the user, or the team is not in the campaign; 409 if the warband is already in the campaign or the campaign has the maximum number of warbands)
+// Returns: None (responds 201 with the updated campaign; 400 on bad input or malformed warband_id/team_id; 401 if unauthenticated; 403 if the join code is missing or wrong (the campaign owner does not need one); 404 if the campaign id is malformed, the warband is not owned by the user, or the team is not in the campaign; 409 if the warband is already in the campaign or the campaign has the maximum number of warbands)
 //
-// POST /campaigns/:id/warbands. Joins a warband owned by the authenticated user to a campaign on one of its teams. Anyone who knows the campaign ID can join
+// POST /campaigns/:id/warbands. Joins a warband owned by the authenticated user to a campaign on one of its teams. Needs the campaign's join_code (shared by the owner), not just its ID
 func JoinCampaign(c *gin.Context) {
 	id := c.Param("id")
 	uid, ok := requireUID(c)
@@ -478,7 +498,27 @@ func JoinCampaign(c *gin.Context) {
 		return
 	}
 
-	if err := repositories.JoinCampaign(id, req.WarbandID, req.TeamID); err != nil {
+	// the campaign owner can add their own warbands without the code; everyone
+	// else needs it, because the campaign ID alone is public
+	var joinCode *string
+	isOwner, err := repositories.IsCampaignOwner(id, uid)
+	if err != nil {
+		serverError(c, err)
+		return
+	}
+	if !isOwner {
+		if repositories.NormalizeJoinCode(req.JoinCode) == "" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "join code required"})
+			return
+		}
+		joinCode = &req.JoinCode
+	}
+
+	if err := repositories.JoinCampaign(id, req.WarbandID, req.TeamID, joinCode); err != nil {
+		if errors.Is(err, repositories.ErrInvalidJoinCode) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "invalid join code"})
+			return
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "team not found in this campaign"})
 			return
@@ -611,4 +651,60 @@ func LeaveCampaign(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// Arguments: c (gin context)
+//
+// Returns: None (responds 200 with the join code; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed)
+//
+// GET /campaigns/:id/join-code. Shows the campaign's join code to its owner, to share with players
+func GetCampaignJoinCode(c *gin.Context) {
+	id := c.Param("id")
+	uid, ok := requireUID(c)
+	if !ok {
+		return
+	}
+	if !requireCampaignOwner(c, id, uid) {
+		return
+	}
+
+	code, err := repositories.GetJoinCode(id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
+			return
+		}
+		serverError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, models.JoinCodeResponse{JoinCode: code})
+}
+
+// Arguments: c (gin context)
+//
+// Returns: None (responds 200 with the new join code; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed)
+//
+// POST /campaigns/:id/join-code/rotate. Replaces the campaign's join code, so the old one stops working. Existing members are unaffected
+func RotateCampaignJoinCode(c *gin.Context) {
+	id := c.Param("id")
+	uid, ok := requireUID(c)
+	if !ok {
+		return
+	}
+	if !requireCampaignOwner(c, id, uid) {
+		return
+	}
+
+	code, err := repositories.RotateJoinCode(id, uid)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
+			return
+		}
+		serverError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, models.JoinCodeResponse{JoinCode: code})
 }

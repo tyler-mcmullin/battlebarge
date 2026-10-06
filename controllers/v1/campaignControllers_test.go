@@ -247,7 +247,7 @@ func TestTeamEndpoints(t *testing.T) {
 	// a team with a warband on it can't be deleted
 	wb := testutil.InsertWarband(t, "player", "W")
 	expect(t, call(r, "player", http.MethodPost, "/campaigns/"+c.ID.String()+"/warbands",
-		`{"warband_id":"`+wb.ID.String()+`","team_id":"`+teams[2].ID.String()+`"}`), http.StatusCreated)
+		`{"warband_id":"`+wb.ID.String()+`","team_id":"`+teams[2].ID.String()+`","join_code":"TESTCODE01"}`), http.StatusCreated)
 	expect(t, call(r, "owner", http.MethodDelete, base+"/"+teams[2].ID.String(), ``), http.StatusConflict)
 
 	// empty teams delete fine
@@ -271,7 +271,7 @@ func TestWarbandsJoinTeams(t *testing.T) {
 	r := newRouter()
 
 	join := func(uid string, warband, team uuid.UUID) *httptest.ResponseRecorder {
-		return call(r, uid, http.MethodPost, base, `{"warband_id":"`+warband.String()+`","team_id":"`+team.String()+`"}`)
+		return call(r, uid, http.MethodPost, base, `{"warband_id":"`+warband.String()+`","team_id":"`+team.String()+`","join_code":"TESTCODE01"}`)
 	}
 
 	// can't join with someone else's warband (404 hides it), or an unknown one
@@ -282,7 +282,7 @@ func TestWarbandsJoinTeams(t *testing.T) {
 	expect(t, join("player", wb.ID, uuid.New()), http.StatusNotFound)
 	// unknown campaign
 	expect(t, call(r, "player", http.MethodPost, "/campaigns/"+uuid.NewString()+"/warbands",
-		`{"warband_id":"`+wb.ID.String()+`","team_id":"`+red.ID.String()+`"}`), http.StatusNotFound)
+		`{"warband_id":"`+wb.ID.String()+`","team_id":"`+red.ID.String()+`","join_code":"TESTCODE01"}`), http.StatusNotFound)
 
 	// the warband's owner joins, no campaign ownership needed
 	w := join("player", wb.ID, red.ID)
@@ -297,7 +297,7 @@ func TestWarbandsJoinTeams(t *testing.T) {
 
 	// the same warband can be in another campaign
 	expect(t, call(r, "player", http.MethodPost, "/campaigns/"+elsewhere.ID.String()+"/warbands",
-		`{"warband_id":"`+wb.ID.String()+`","team_id":"`+foreign.ID.String()+`"}`), http.StatusCreated)
+		`{"warband_id":"`+wb.ID.String()+`","team_id":"`+foreign.ID.String()+`","join_code":"TESTCODE01"}`), http.StatusCreated)
 
 	// moving teams: the warband owner and the campaign owner can; others can't
 	move := func(uid string, team uuid.UUID) *httptest.ResponseRecorder {

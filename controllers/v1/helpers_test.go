@@ -60,6 +60,8 @@ func newRouter() *gin.Engine {
 	r.POST("/campaigns/:id/teams", controllers.CreateTeam)
 	r.PATCH("/campaigns/:id/teams/:teamId", controllers.RenameTeam)
 	r.DELETE("/campaigns/:id/teams/:teamId", controllers.DeleteTeam)
+	r.GET("/campaigns/:id/join-code", controllers.GetCampaignJoinCode)
+	r.POST("/campaigns/:id/join-code/rotate", controllers.RotateCampaignJoinCode)
 	r.POST("/campaigns/:id/warbands", controllers.JoinCampaign)
 	r.PATCH("/campaigns/:id/warbands/:warbandId", controllers.ChangeWarbandTeam)
 	r.DELETE("/campaigns/:id/warbands/:warbandId", controllers.LeaveCampaign)

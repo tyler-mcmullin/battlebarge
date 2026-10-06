@@ -94,7 +94,7 @@ paths:
                       accepts their token.
         '400': { $ref: '#/components/responses/BadRequest' }
         '409':
-          description: Email already registered, or username already taken.
+          description: Email already registered, or username already taken (usernames are unique ignoring case, so `Alice` and `alice` conflict).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }

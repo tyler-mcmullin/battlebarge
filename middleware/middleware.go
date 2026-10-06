@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -89,8 +90,13 @@ func RequireAuth() gin.HandlerFunc {
 
 		token, err := verifyToken(c.Request.Context(), idToken)
 		if err != nil {
+			// the client only gets a generic message; the real reason goes to the log
+			log.Printf("auth: token rejected for %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
 			msg := "invalid or expired token"
-			if auth.IsIDTokenRevoked(err) || auth.IsUserDisabled(err) {
+			switch {
+			case auth.IsUserDisabled(err):
+				msg = "account disabled"
+			case auth.IsIDTokenRevoked(err):
 				msg = "token revoked"
 			}
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": msg})

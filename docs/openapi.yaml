@@ -819,7 +819,10 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
     Unauthorized:
-      description: Missing, malformed, or expired token.
+      description: |
+        Missing, malformed, expired, or revoked token (error `token revoked`),
+        or the account has been disabled (error `account disabled`). Sign in
+        again to get a new token; a disabled account cannot.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

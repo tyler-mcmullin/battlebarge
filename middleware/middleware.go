@@ -69,3 +69,71 @@ func LoadUser() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// Arguments: raw (string) - comma-separated origins, e.g. the CORS_ALLOWED_ORIGINS env var
+//
+// Returns: []string - the origins with whitespace, empty entries, and trailing slashes removed
+//
+// Parses a comma-separated origin list for the CORS middleware
+func ParseOrigins(raw string) []string {
+	origins := []string{}
+	for _, o := range strings.Split(raw, ",") {
+		o = strings.TrimRight(strings.TrimSpace(o), "/")
+		if o != "" {
+			origins = append(origins, o)
+		}
+	}
+	return origins
+}
+
+// Arguments: allowedOrigins ([]string) - exact origins (scheme://host[:port]) that browsers may call the API from
+//
+// Returns: gin.HandlerFunc - the CORS middleware
+//
+// Lets browser frontends on the allowed origins call the API. Requests from an
+// allowed origin get Access-Control-Allow-Origin; preflight (OPTIONS) requests
+// are answered with 204 and the allowed methods and headers, or 403 if the
+// origin is not allowed. Requests with no Origin header (curl, same-origin,
+// server-to-server) are untouched. With an empty list no origin is allowed.
+// Origins are matched exactly; "*" is deliberately not supported.
+func CORS(allowedOrigins []string) gin.HandlerFunc {
+	allowed := make(map[string]bool, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		allowed[o] = true
+	}
+
+	return func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		if origin == "" {
+			c.Next()
+			return
+		}
+
+		// The response depends on the Origin header, so caches must key on it.
+		c.Writer.Header().Add("Vary", "Origin")
+
+		isPreflight := c.Request.Method == http.MethodOptions &&
+			c.GetHeader("Access-Control-Request-Method") != ""
+
+		if !allowed[origin] {
+			if isPreflight {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			c.Next()
+			return
+		}
+
+		c.Header("Access-Control-Allow-Origin", origin)
+
+		if isPreflight {
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			c.Header("Access-Control-Max-Age", "600")
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	}
+}

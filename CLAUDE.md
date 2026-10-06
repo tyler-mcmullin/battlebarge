@@ -12,7 +12,7 @@ Battlebarge is a Go (Gin) REST API for tracking tabletop-wargame warbands, units
 - Build / vet: `go build ./...`, `go vet ./...`
 - Tests: `go test ./...`; single test: `go test ./repositories -run TestAddAndDeleteUnitPerk`. Database tests create a throwaway schema in the Postgres named by `TEST_POSTGRES_URL` (e.g. `postgres://user@localhost:5432/bbtest`) and skip when it is unset. Tests sit beside the code they test; shared database fixtures are in `testutil/`. The table definitions live in `testutil/db.go` (`schemaSQL`) and must be kept in sync with the real schema. Controller tests use the real handlers with a fake auth middleware (`X-Test-UID` header); Firebase itself is never called.
 - Firebase emulators (Auth on 9099, Firestore on 8000, UI enabled): `firebase emulators:start`
-- `.env` (gitignored) needs `FIREBASE_PROJECT_ID`, `POSTGRES_URL`, and for local dev `FIREBASE_AUTH_EMULATOR_HOST` / `FIRESTORE_EMULATOR_HOST`. `testlogin.html` (gitignored) is a local helper for obtaining ID tokens.
+- `.env` (gitignored) needs `FIREBASE_PROJECT_ID`, `POSTGRES_URL`, optionally `CORS_ALLOWED_ORIGINS` (comma-separated browser origins allowed to call the API, e.g. `http://localhost:5173`; unset means no cross-origin access), and for local dev `FIREBASE_AUTH_EMULATOR_HOST` / `FIRESTORE_EMULATOR_HOST`. `testlogin.html` (gitignored) is a local helper for obtaining ID tokens.
 - The Postgres schema is not in the repo; the SQL in `repositories/` is the source of truth for table/column names. `db/migrations/` holds hand-run SQL files (001 unit_perks, 002 campaigns; run each once, manually).
 
 ## Architecture

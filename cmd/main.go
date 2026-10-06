@@ -7,6 +7,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"battlebarge/db"
+	"battlebarge/middleware"
 	"battlebarge/routes"
 )
 
@@ -30,6 +31,9 @@ func main() {
 
 	//router setup
 	r := gin.Default()
+
+	//allow browser frontends on these origins (comma-separated)
+	r.Use(middleware.CORS(middleware.ParseOrigins(os.Getenv("CORS_ALLOWED_ORIGINS"))))
 
 	//get routes and controllers
 	routes.GetAuthControllers(r)

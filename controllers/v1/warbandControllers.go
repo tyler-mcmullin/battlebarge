@@ -41,6 +41,7 @@ func CreateWarband(c *gin.Context) {
 		Faction:           "",
 		Description:       "",
 		CrusadePoints:     0,
+		Units:             []models.Unit{},
 		RequisitionPoints: 0,
 		SupplyLimit:       0,
 		CreatedAt:         now,

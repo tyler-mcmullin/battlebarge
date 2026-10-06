@@ -29,3 +29,19 @@ func TestRegisterUser_FieldTooLong(t *testing.T) {
 		})
 	}
 }
+
+func TestRegisterUser_MissingOrInvalidFields(t *testing.T) {
+	r := newRouter()
+
+	for name, body := range map[string]string{
+		"empty object":     `{}`,
+		"missing email":    `{"username":"alice","password":"secret123"}`,
+		"missing username": `{"email":"a@example.com","password":"secret123"}`,
+		"missing password": `{"email":"a@example.com","username":"alice"}`,
+		"invalid email":    `{"email":"not-an-email","username":"alice","password":"secret123"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			expect(t, call(r, "", http.MethodPost, "/auth/register", body), http.StatusBadRequest)
+		})
+	}
+}

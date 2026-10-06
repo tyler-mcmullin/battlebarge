@@ -107,9 +107,9 @@ type CampaignWarband struct {
 
 // Request Structs
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"max=255"`
-	Username string `json:"username" binding:"max=50"`
-	Password string `json:"password"`
+	Email    string `json:"email" binding:"required,email,max=255"`
+	Username string `json:"username" binding:"required,max=50"`
+	Password string `json:"password" binding:"required"`
 }
 
 type CreateWarbandRequest struct {

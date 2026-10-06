@@ -8,7 +8,7 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 - [ ] **Remove the Firebase emulator settings from production.** `FIREBASE_AUTH_EMULATOR_HOST` and `FIRESTORE_EMULATOR_HOST` must not be set, or the server talks to a local emulator instead of Firebase.
 - [ ] **Firebase admin credentials.** `RegisterUser` creates and deletes Firebase users, which needs service-account credentials (`GOOGLE_APPLICATION_CREDENTIALS` or the platform's default credentials) for the production project. Token verification alone does not. Set `FIREBASE_PROJECT_ID` to the production project.
 - [ ] **Production Postgres.** Managed instance, `POSTGRES_URL` with TLS (`sslmode=require` or stricter), and a dedicated least-privilege database user.
-- [ ] **Run migrations on production, in order, once each.** 001 (unit_perks), 002 (campaigns), 003 (campaign join codes) and 004 (case-insensitive usernames) in `db/migrations/`. There is no migration runner, so record here when each ran: development has had 001 only so far. Take a `pg_dump` backup first. 003 gives every existing campaign a random join code (owners can rotate it). 004 refuses to run, with a message naming them, if two usernames differ only by case; rename those users first.
+- [ ] **Run migrations on production, in order, once each.** 001 (unit_perks), 002 (campaigns), 003 (campaign join codes) and 004 (case-insensitive usernames) in `backend/db/migrations/` (run from the repo root, e.g. `psql "$POSTGRES_URL" -f backend/db/migrations/003_campaign_join_codes.sql`). There is no migration runner, so record here when each ran: development has had 001 only so far. Take a `pg_dump` backup first. 003 gives every existing campaign a random join code (owners can rotate it). 004 refuses to run, with a message naming them, if two usernames differ only by case; rename those users first.
 - [ ] **Email verification (config).** The API requires a verified email (403 `email not verified` otherwise). Verification lives in Firebase Authentication, not in Postgres: the frontend calls `sendEmailVerification`, Firebase emails a one-time link, and clicking it makes the handler call `applyActionCode`, which sets `emailVerified` on the Firebase account. The API only reads the signed `email_verified` claim in the ID token, so a token issued before verifying stays unverified until the frontend refreshes it (`user.reload()` then `getIdToken(true)`), and changing the account's email resets it. Before launch:
   - [ ] **Sender and spam.** The default Firebase sender often lands in spam. Configure a custom sender domain or SMTP and customize the template (Firebase console, Authentication, Templates).
   - [ ] **Authorized domains.** Add the frontend's domain in the console, or the links will not work.
@@ -48,7 +48,7 @@ Decided later; each needs a product call. Options and my recommendation are summ
 - [ ] **Backups.** Automated Postgres backups, plus a tested restore.
 - [ ] **Logging and monitoring.** Unexpected errors are logged with `log.Printf` and returned as a generic 500. Ship logs somewhere searchable and alert on 5xx rates.
 - [ ] **Database connection pool.** Tune pgx pool size to the database's connection limit.
-- [ ] **CI (code).** GitHub Action running `go vet` and `go test ./...` against a Postgres service so the database tests run on every push.
+- [ ] **CI (code).** GitHub Action running `go vet` and `go test ./...` (from `backend/`) against a Postgres service so the database tests run on every push.
 
 ## Quality gaps
 
@@ -56,7 +56,7 @@ Decided later; each needs a product call. Options and my recommendation are summ
 - [ ] **Account deletion.** No delete-user endpoint, and `warbands.user_id` has no `ON DELETE` action, so deleting a user with warbands fails. Needed for account deletion requests.
 - [ ] **Profile management.** No endpoint to change username or email.
 - [ ] **Pagination.** List endpoints return everything; fine at launch size.
-- [ ] **Schema in the repo.** Keep a current schema file so `testutil/db.go` and the real database cannot drift.
+- [ ] **Schema in the repo.** Keep a current schema file so `backend/testutil/db.go` and the real database cannot drift.
 
 ## Done
 

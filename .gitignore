@@ -6,7 +6,7 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 testlogin.html
-cmd/cmd
+backend/cmd/cmd
 testlogin_files/
 *.exe
 .DS_Store

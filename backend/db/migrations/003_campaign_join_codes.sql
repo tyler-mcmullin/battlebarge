@@ -1,6 +1,6 @@
 -- Gives every campaign a join code. Joining a campaign now needs the code (the
 -- owner does not), so the campaign ID, which is public, is no longer enough.
--- Run once, manually (e.g. psql "$POSTGRES_URL" -f db/migrations/003_campaign_join_codes.sql).
+-- Run once, manually (e.g. psql "$POSTGRES_URL" -f backend/db/migrations/003_campaign_join_codes.sql).
 
 BEGIN;
 

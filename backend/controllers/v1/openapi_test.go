@@ -21,7 +21,7 @@ import (
 
 func loadSpec(t *testing.T) map[string]any {
 	t.Helper()
-	raw, err := os.ReadFile("../../docs/openapi.yaml")
+	raw, err := os.ReadFile("../../../docs/openapi.yaml")
 	if err != nil {
 		t.Fatalf("read spec: %v", err)
 	}

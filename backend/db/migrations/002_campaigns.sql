@@ -1,5 +1,5 @@
 -- Adds campaigns, their chapters, teams, and warband memberships.
--- Run once, manually (e.g. psql "$POSTGRES_URL" -f db/migrations/002_campaigns.sql).
+-- Run once, manually (e.g. psql "$POSTGRES_URL" -f backend/db/migrations/002_campaigns.sql).
 
 BEGIN;
 

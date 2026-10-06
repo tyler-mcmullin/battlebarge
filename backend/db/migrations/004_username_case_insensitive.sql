@@ -1,6 +1,6 @@
 -- Makes usernames unique ignoring case, so "Alice" and "alice" cannot both
 -- exist. The original capitalization is kept for display.
--- Run once, manually (e.g. psql "$POSTGRES_URL" -f db/migrations/004_username_case_insensitive.sql).
+-- Run once, manually (e.g. psql "$POSTGRES_URL" -f backend/db/migrations/004_username_case_insensitive.sql).
 
 BEGIN;
 

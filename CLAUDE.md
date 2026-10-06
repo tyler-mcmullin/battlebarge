@@ -6,14 +6,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Battlebarge is a Go (Gin) REST API for tracking tabletop-wargame warbands, units (kills, XP, perks), and campaigns. Users authenticate via Firebase Auth; all application data lives in PostgreSQL. There are no tests, Makefile, or linter config in the repo yet.
 
+## Repository layout
+
+- `backend/` holds all the Go code (module `battlebarge`, so import paths are unchanged): `cmd/`, `controllers/`, `db/` (including `db/migrations/`), `middleware/`, `models/`, `repositories/`, `routes/`, `testutil/`, plus `go.mod`/`go.sum`. Paths in the architecture notes below are relative to `backend/` unless they say otherwise. Run Go commands from `backend/`.
+- `docs/openapi.yaml` is the shared API contract and stays at the repo root so a frontend can generate types from it. `firebase.json` and `.firebaserc` (emulator and project config) also stay at the root.
+- `frontend/` is planned and does not exist yet. It will have its own `.env`, separate from the backend's; never put backend secrets there.
+- The backend's secrets live in `backend/.env`; each part of the project keeps its own `.env`, and nothing lives at the repo root.
+
 ## Commands
 
-- Run the server: `go run ./cmd` from the repo root (or `cd cmd && go run .`). `main.go` loads `.env` from the working directory or its parent if one exists; real environment variables take precedence and a missing file is fine. Listens on `$PORT` (default `8080`).
-- Build / vet: `go build ./...`, `go vet ./...`
-- Tests: `go test ./...`; single test: `go test ./repositories -run TestAddAndDeleteUnitPerk`. Database tests create a throwaway schema in the Postgres named by `TEST_POSTGRES_URL` (e.g. `postgres://user@localhost:5432/bbtest`) and skip when it is unset. Tests sit beside the code they test; shared database fixtures are in `testutil/`. The table definitions live in `testutil/db.go` (`schemaSQL`) and must be kept in sync with the real schema. Controller tests use the real handlers with a fake auth middleware (`X-Test-UID` header); Firebase itself is never called.
+- Run the server: `cd backend && go run ./cmd`. `main.go` loads `backend/.env` from the working directory or its parent if one exists (so it works from `backend/` or `backend/cmd/`, and never looks higher); real environment variables take precedence and a missing file is fine. Listens on `$PORT` (default `8080`).
+- Build / vet (from `backend/`): `go build ./...`, `go vet ./...`
+- Tests (from `backend/`): `go test ./...`; single test: `go test ./repositories -run TestAddAndDeleteUnitPerk`. Database tests create a throwaway schema in the Postgres named by `TEST_POSTGRES_URL` (e.g. `postgres://user@localhost:5432/bbtest`) and skip when it is unset. Tests sit beside the code they test; shared database fixtures are in `testutil/`. The table definitions live in `testutil/db.go` (`schemaSQL`) and must be kept in sync with the real schema. Controller tests use the real handlers with a fake auth middleware (`X-Test-UID` header); Firebase itself is never called.
 - Firebase emulators (Auth on 9099, Firestore on 8000, UI enabled): `firebase emulators:start`
 - `.env` (gitignored) needs `FIREBASE_PROJECT_ID`, `POSTGRES_URL`, optionally `REQUIRE_EMAIL_VERIFICATION` (default on; `false` disables it for local development), `TRUSTED_PROXIES` (comma-separated load balancer addresses/CIDRs allowed to set `X-Forwarded-For`; unset means client IPs come from the connection) and `CORS_ALLOWED_ORIGINS` (comma-separated browser origins allowed to call the API, e.g. `http://localhost:5173`; unset means no cross-origin access), and for local dev `FIREBASE_AUTH_EMULATOR_HOST` / `FIRESTORE_EMULATOR_HOST`. `testlogin.html` (gitignored) is a local helper for obtaining ID tokens.
-- The Postgres schema is not in the repo; the SQL in `repositories/` is the source of truth for table/column names. `db/migrations/` holds hand-run SQL files (001 unit_perks, 002 campaigns, 003 campaign join codes, 004 case-insensitive usernames; run each once, manually).
+- The Postgres schema is not in the repo; the SQL in `repositories/` is the source of truth for table/column names. `backend/db/migrations/` holds hand-run SQL files (001 unit_perks, 002 campaigns, 003 campaign join codes, 004 case-insensitive usernames; run each once, manually).
 
 ## Architecture
 
@@ -35,7 +42,7 @@ Request structs in `models/models.go` carry the validation (binding tags): lengt
 
 ## API documentation
 
-`docs/openapi.yaml` is the OpenAPI spec for the frontend. `controllers/v1/openapi_test.go` fails if a route is added, removed, or renamed without updating the spec, or if a real response gains, loses, or nulls a field the schema lists. When you change an endpoint, request body, or response shape, update the spec in the same change.
+`docs/openapi.yaml` (repo root, shared by backend and frontend) is the OpenAPI spec for the frontend. `backend/controllers/v1/openapi_test.go` fails if a route is added, removed, or renamed without updating the spec, or if a real response gains, loses, or nulls a field the schema lists. When you change an endpoint, request body, or response shape, update the spec in the same change.
 
 ## Documentation convention
 

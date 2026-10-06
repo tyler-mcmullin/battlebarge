@@ -1,5 +1,5 @@
 -- Moves units.perks (JSON column) into its own unit_perks table.
--- Run once, manually (e.g. psql "$POSTGRES_URL" -f db/migrations/001_unit_perks_table.sql).
+-- Run once, manually (e.g. psql "$POSTGRES_URL" -f backend/db/migrations/001_unit_perks_table.sql).
 -- Assumes units.perks is json/jsonb holding an array of
 -- {"id": uuid, "name": text, "description": text, "is_scar": bool}.
 -- If it is a text column, change `perks` to `perks::jsonb` below.

@@ -16,7 +16,7 @@ import (
 
 // schemaSQL mirrors the tables the repositories expect. The users, warbands,
 // units and unit_perks tables are copied from a pg_dump of the real database;
-// the campaign tables come from db/migrations/002_campaigns.sql plus
+// the campaign tables come from backend/db/migrations/002_campaigns.sql plus
 // 003_campaign_join_codes.sql, and the lowercase username index is migration 004. The repo keeps
 // no schema file, so keep this in sync when the real schema changes.
 const schemaSQL = `

@@ -123,9 +123,11 @@ func splitList(raw string) []string {
 //
 // Returns: None
 //
-// Loads a .env file from the working directory or its parent (so it works from
-// the repo root or from cmd/). A missing file is fine; a file that exists but
-// cannot be read or parsed stops startup.
+// Loads backend/.env from the working directory or its parent, so it is found
+// when running from backend/ or from backend/cmd/. It deliberately does not
+// look any higher, so a file at the repo root (for example the frontend's)
+// is never picked up by the backend. A missing file is fine; a file that
+// exists but cannot be read or parsed stops startup.
 func loadEnvFile() {
 	for _, path := range []string{".env", "../.env"} {
 		err := godotenv.Load(path)

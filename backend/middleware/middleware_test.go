@@ -44,8 +44,8 @@ func do(t *testing.T, header string, mw ...gin.HandlerFunc) (*httptest.ResponseR
 	return w, reached
 }
 
-// Only the rejection paths are covered: accepting a token needs a Firebase
-// client (db.AuthClient), which tests don't create.
+// TestRequireAuth_Rejects checks that a missing or malformed Authorization header gets 401
+// without reaching the handler or Firebase.
 func TestRequireAuth_Rejects(t *testing.T) {
 	tests := []struct {
 		name   string

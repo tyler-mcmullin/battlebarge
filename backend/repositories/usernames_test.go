@@ -12,8 +12,8 @@ import (
 	"battlebarge/testutil"
 )
 
-// Usernames are unique ignoring case, but keep the capitalization they were
-// registered with.
+// TestUsernamesAreUniqueIgnoringCase checks that usernames are unique ignoring
+// case, but keep the capitalization they were registered with.
 func TestUsernamesAreUniqueIgnoringCase(t *testing.T) {
 	testutil.SetupDB(t)
 

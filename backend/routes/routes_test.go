@@ -72,8 +72,9 @@ func TestRoutesRegistered(t *testing.T) {
 	}
 }
 
-// Routes that change data must sit behind auth. Hitting them without an
-// Authorization header must be rejected before reaching any handler or database.
+// TestProtectedRoutesRequireAuth checks that routes that change data sit behind
+// auth: hitting them without an Authorization header must be rejected before
+// reaching any handler or database.
 func TestProtectedRoutesRequireAuth(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -122,9 +123,9 @@ func TestProtectedRoutesRequireAuth(t *testing.T) {
 	}
 }
 
-// Registration creates Firebase accounts, so it has its own tight per-IP limit.
-// Invalid bodies are used so no Firebase call is made: they are answered 400
-// until the limit is hit, then 429.
+// TestRegisterIsRateLimited checks that registration, which creates Firebase
+// accounts, has its own tight per-IP limit. Invalid bodies are used so no Firebase
+// call is made: they are answered 400 until the limit is hit, then 429.
 func TestRegisterIsRateLimited(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -145,9 +146,9 @@ func TestRegisterIsRateLimited(t *testing.T) {
 	}
 }
 
-// Joining is the one route where a stranger can guess a secret, so it has its
-// own tight limit. A fake verifier lets requests through auth, and invalid
-// bodies are answered 400 before any database work.
+// TestJoinIsRateLimited checks that joining, the one route where a stranger can
+// guess a secret, has its own tight limit. A fake verifier lets requests through
+// auth, and invalid bodies are answered 400 before any database work.
 func TestJoinIsRateLimited(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	defer middleware.SetTokenVerifier(func(ctx context.Context, idToken string) (*auth.Token, error) {

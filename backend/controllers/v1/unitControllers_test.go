@@ -182,8 +182,9 @@ func TestUnitEndpoints_UnknownUnit(t *testing.T) {
 	}
 }
 
-// A malformed (non-UUID) ID can never match a record, so path IDs give 404
-// and a malformed warband_id in a body gives 400, never a 500 or raw DB error.
+// TestMalformedIDs checks that a malformed (non-UUID) ID can never match a record,
+// so path IDs give 404 and a malformed warband_id in a body gives 400, never a 500
+// or raw DB error.
 func TestMalformedIDs(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")

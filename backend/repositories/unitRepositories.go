@@ -18,11 +18,11 @@ import (
 const unitColumns = `id, warband_id, unit_name, narrative_name, bio,
 		points, kills, experience, created_at, updated_at`
 
+// scanUnit scans a unit row without loading its perks
+//
 // Arguments: row (pgx.Row) - a row selecting unitColumns
 //
 // Returns: models.Unit - the scanned unit with an empty (non-nil) perks slice; error - on scan failure
-//
-// Scans a unit row without loading its perks
 func scanUnit(row pgx.Row) (models.Unit, error) {
 	var u models.Unit
 	err := row.Scan(
@@ -36,11 +36,11 @@ func scanUnit(row pgx.Row) (models.Unit, error) {
 	return u, nil
 }
 
+// GetPerksByUnitID fetches all perks belonging to a unit
+//
 // Arguments: unitID (string) - unit ID
 //
 // Returns: []models.Perk - the unit's perks, oldest first (empty if none); error - on query or scan failure
-//
-// Fetches all perks belonging to a unit
 func GetPerksByUnitID(unitID string) ([]models.Perk, error) {
 	query := `
 		SELECT id, name, description, is_scar
@@ -67,11 +67,11 @@ func GetPerksByUnitID(unitID string) ([]models.Perk, error) {
 	return perks, rows.Err()
 }
 
+// withPerks loads a unit's perks from unit_perks and attaches them to the unit
+//
 // Arguments: u (models.Unit) - unit whose perks should be loaded
 //
 // Returns: models.Unit - the unit with its perks populated; error - on query failure
-//
-// Loads a unit's perks from unit_perks and attaches them to the unit
 func withPerks(u models.Unit) (models.Unit, error) {
 	perks, err := GetPerksByUnitID(u.ID.String())
 	if err != nil {
@@ -81,11 +81,11 @@ func withPerks(u models.Unit) (models.Unit, error) {
 	return u, nil
 }
 
+// CreateUnit inserts a new unit row and its perks in a single transaction
+//
 // Arguments: unit (models.Unit) - unit record to insert, including any initial perks
 //
 // Returns: error - ErrLimitReached if the warband already has MaxUnitsPerWarband units, or another error if the unit or a perk insert fails (nothing is saved in that case)
-//
-// Inserts a new unit row and its perks in a single transaction
 func CreateUnit(unit models.Unit) error {
 	ctx := context.Background()
 
@@ -130,11 +130,11 @@ func CreateUnit(unit models.Unit) error {
 	return tx.Commit(ctx)
 }
 
+// GetUnitByID fetches a single unit by ID
+//
 // Arguments: id (string) - unit ID
 //
 // Returns: models.Unit - the matching unit with its perks; error - pgx.ErrNoRows if not found
-//
-// Fetches a single unit by ID
 func GetUnitByID(id string) (models.Unit, error) {
 	query := `SELECT ` + unitColumns + ` FROM units WHERE id = $1`
 
@@ -146,11 +146,11 @@ func GetUnitByID(id string) (models.Unit, error) {
 	return withPerks(u)
 }
 
+// GetUnitsByWarbandID fetches all units belonging to a warband, loading every unit's perks in one extra query
+//
 // Arguments: warbandID (string) - warband ID
 //
 // Returns: []models.Unit - the warband's units with their perks, oldest first; error - on query or scan failure
-//
-// Fetches all units belonging to a warband, loading every unit's perks in one extra query
 func GetUnitsByWarbandID(warbandID string) ([]models.Unit, error) {
 	query := `
 		SELECT ` + unitColumns + `
@@ -216,11 +216,11 @@ func GetUnitsByWarbandID(warbandID string) ([]models.Unit, error) {
 	return units, nil
 }
 
+// UpdateUnit partially updates a unit's name, narrative name, bio, and points
+//
 // Arguments: id (string) - unit ID; req (models.UpdateUnitRequest) - fields to change, nil fields are left as-is
 //
 // Returns: models.Unit - the updated unit with its perks; error - pgx.ErrNoRows if not found
-//
-// Partially updates a unit's name, narrative name, bio, and points
 func UpdateUnit(id string, req models.UpdateUnitRequest) (models.Unit, error) {
 	query := `
 		UPDATE units
@@ -242,11 +242,11 @@ func UpdateUnit(id string, req models.UpdateUnitRequest) (models.Unit, error) {
 	return withPerks(u)
 }
 
+// IncrementUnitKills adds to a unit's kill count, clamping the result at 0
+//
 // Arguments: id (string) - unit ID; amount (int) - value to add, may be negative
 //
 // Returns: models.Unit - the updated unit with its perks; error - pgx.ErrNoRows if not found
-//
-// Adds to a unit's kill count, clamping the result at 0
 func IncrementUnitKills(id string, amount int) (models.Unit, error) {
 	query := `
 		UPDATE units
@@ -262,11 +262,11 @@ func IncrementUnitKills(id string, amount int) (models.Unit, error) {
 	return withPerks(u)
 }
 
+// IncrementUnitXP adds to a unit's experience, clamping the result at 0
+//
 // Arguments: id (string) - unit ID; amount (int) - value to add, may be negative
 //
 // Returns: models.Unit - the updated unit with its perks; error - pgx.ErrNoRows if not found
-//
-// Adds to a unit's experience, clamping the result at 0
 func IncrementUnitXP(id string, amount int) (models.Unit, error) {
 	query := `
 		UPDATE units
@@ -282,11 +282,11 @@ func IncrementUnitXP(id string, amount int) (models.Unit, error) {
 	return withPerks(u)
 }
 
+// AddUnitPerk inserts a perk (or scar) into unit_perks and bumps the unit's updated_at, atomically
+//
 // Arguments: id (string) - unit ID; req (models.AddPerkRequest) - perk to add
 //
 // Returns: models.Unit - the updated unit with its perks; error - pgx.ErrNoRows if the unit is not found, ErrLimitReached if it already has MaxPerksPerUnit perks, or another error on failure
-//
-// Inserts a perk (or scar) into unit_perks and bumps the unit's updated_at, atomically
 func AddUnitPerk(id string, req models.AddPerkRequest) (models.Unit, error) {
 	ctx := context.Background()
 
@@ -334,11 +334,11 @@ func AddUnitPerk(id string, req models.AddPerkRequest) (models.Unit, error) {
 	return GetUnitByID(id)
 }
 
+// DeleteUnitPerk deletes a perk from unit_perks and bumps the unit's updated_at, atomically
+//
 // Arguments: unitID (string) - unit ID; perkID (string) - ID of the perk to remove
 //
 // Returns: models.Unit - the updated unit with its perks; error - pgx.ErrNoRows if the unit or perk is not found
-//
-// Deletes a perk from unit_perks and bumps the unit's updated_at, atomically
 func DeleteUnitPerk(unitID string, perkID string) (models.Unit, error) {
 	perkUUID, err := uuid.Parse(perkID)
 	if err != nil {
@@ -372,11 +372,11 @@ func DeleteUnitPerk(unitID string, perkID string) (models.Unit, error) {
 	return GetUnitByID(unitID)
 }
 
+// DeleteUnit deletes a unit by ID; its perks are removed by the unit_perks foreign key's ON DELETE CASCADE
+//
 // Arguments: id (string) - unit ID
 //
 // Returns: error - pgx.ErrNoRows if the unit does not exist, or another error on failure
-//
-// Deletes a unit by ID; its perks are removed by the unit_perks foreign key's ON DELETE CASCADE
 func DeleteUnit(id string) error {
 	query := `DELETE FROM units WHERE id = $1`
 

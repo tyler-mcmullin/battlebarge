@@ -13,8 +13,9 @@ import (
 
 func repeat(s string, n int) string { return strings.Repeat(s, n) }
 
-// Bodies that must be rejected with 400 before any database work. The routes
-// here validate the body before touching the database, so no DB is needed.
+// TestValidation_Rejected checks bodies that must be rejected with 400 before any
+// database work. The routes here validate the body before touching the database,
+// so no DB is needed.
 func TestValidation_Rejected(t *testing.T) {
 	r := newRouter()
 	id := uuid.NewString()
@@ -74,7 +75,8 @@ func TestValidation_Rejected(t *testing.T) {
 	}
 }
 
-// Routes that check campaign ownership before reading the body need a database.
+// TestValidation_RejectedCampaignBodies covers the routes that check campaign
+// ownership before reading the body, which need a database.
 func TestValidation_RejectedCampaignBodies(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")
@@ -102,7 +104,8 @@ func TestValidation_RejectedCampaignBodies(t *testing.T) {
 	}
 }
 
-// Values at the limits are accepted, and rejected bodies don't change anything.
+// TestValidation_Accepted checks that values at the limits are accepted, and
+// rejected bodies don't change anything.
 func TestValidation_Accepted(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")
@@ -129,7 +132,8 @@ func TestValidation_Accepted(t *testing.T) {
 	}
 }
 
-// 0 is a valid amount for kills and XP: it succeeds and changes nothing.
+// TestIncrement_ZeroIsAllowed checks that 0 is a valid amount for kills and XP: it
+// succeeds and changes nothing.
 func TestIncrement_ZeroIsAllowed(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")
@@ -159,7 +163,8 @@ func TestIncrement_ZeroIsAllowed(t *testing.T) {
 	}
 }
 
-// A user can only have a fixed number of each kind of record; going over is a 409.
+// TestQuotas_Return409 checks that a user can only have a fixed number of each kind
+// of record, and that going over is a 409.
 func TestQuotas_Return409(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")

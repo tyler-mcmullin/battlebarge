@@ -22,7 +22,7 @@ import (
 
 func main() {
 	//load environment: .env is optional (production sets real env variables),
-	//and variables that are already set take precedence over the file
+	//and variables that are already set take precedent over the file
 	loadEnvFile()
 
 	//initialize firebase
@@ -104,12 +104,12 @@ func main() {
 	db.PGClient.Close()
 }
 
+// splitList splits a comma-separated environment variable such as TRUSTED_PROXIES
+//
 // Arguments: raw (string) - comma-separated values
 //
 // Returns: []string - the trimmed, non-empty values (nil if there are none, which
 // gin's SetTrustedProxies treats the same as an empty list: trust no proxies)
-//
-// Splits a comma-separated environment variable such as TRUSTED_PROXIES
 func splitList(raw string) []string {
 	var out []string
 	for v := range strings.SplitSeq(raw, ",") {
@@ -120,15 +120,15 @@ func splitList(raw string) []string {
 	return out
 }
 
-// Arguments: None
-//
-// Returns: None
-//
-// Loads backend/.env from the working directory or its parent, so it is found
+// loadEnvFile loads backend/.env from the working directory or its parent, so it is found
 // when running from backend/ or from backend/cmd/. It deliberately does not
 // look any higher, so a file at the repo root (for example the frontend's)
 // is never picked up by the backend. A missing file is fine; a file that
 // exists but cannot be read or parsed stops startup.
+//
+// Arguments: None
+//
+// Returns: None
 func loadEnvFile() {
 	for _, path := range []string{".env", "../.env"} {
 		err := godotenv.Load(path)

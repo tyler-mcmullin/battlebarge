@@ -57,8 +57,9 @@ func TestLoadEnvFile_FindsTheFileInTheWorkingDirectoryOrItsParent(t *testing.T) 
 	}
 }
 
-// A file at the repo root (above backend/) must not be picked up, so a root
-// level file meant for something else never leaks into the backend.
+// TestLoadEnvFile_DoesNotLookAboveTheParent checks that a file above the parent
+// directory (the repo root) is not picked up, so a root level file meant for
+// something else never leaks into the backend.
 func TestLoadEnvFile_DoesNotLookAboveTheParent(t *testing.T) {
 	clearTestVar(t)
 	root := t.TempDir()

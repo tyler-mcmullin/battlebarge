@@ -10,8 +10,9 @@ import (
 	"battlebarge/testutil"
 )
 
-// RegisterUser needs Firebase, so its error mapping is tested directly with
-// the real errors Postgres gives for each kind of duplicate.
+// TestUserInsertConflict tests RegisterUser's error mapping directly, with the
+// real errors Postgres gives for each kind of duplicate, because RegisterUser
+// itself needs Firebase.
 func TestUserInsertConflict(t *testing.T) {
 	testutil.SetupDB(t)
 

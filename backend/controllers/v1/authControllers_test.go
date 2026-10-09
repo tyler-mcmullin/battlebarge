@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// Only input validation is covered: a successful registration needs a Firebase
-// client, which tests don't create.
+// TestRegisterUser_InvalidBody covers input validation only: a successful
+// registration needs a Firebase client, which tests don't create.
 func TestRegisterUser_InvalidBody(t *testing.T) {
 	r := newRouter()
 
@@ -15,8 +15,9 @@ func TestRegisterUser_InvalidBody(t *testing.T) {
 	expect(t, w, http.StatusBadRequest)
 }
 
-// Fields are limited to the users table's varchar sizes; longer values are
-// rejected up front instead of failing the insert (and a Firebase rollback).
+// TestRegisterUser_FieldTooLong checks that fields are limited to the users table's
+// varchar sizes; longer values are rejected up front instead of failing the insert
+// (and a Firebase rollback).
 func TestRegisterUser_FieldTooLong(t *testing.T) {
 	r := newRouter()
 

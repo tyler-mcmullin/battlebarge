@@ -82,8 +82,9 @@ func TestOpenAPIMatchesRoutes(t *testing.T) {
 	}
 }
 
-// Every documented operation must declare the responses the handlers give for
-// its own protection level: operations with bearerAuth must document 401.
+// TestOpenAPISecurityMatchesRoutes checks that every documented operation declares
+// the responses the handlers give for its own protection level: operations with
+// bearerAuth must document 401 and 403.
 func TestOpenAPISecurityMatchesRoutes(t *testing.T) {
 	spec := loadSpec(t)
 

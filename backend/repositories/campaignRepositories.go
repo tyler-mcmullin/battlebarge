@@ -16,11 +16,11 @@ const campaignColumns = `id, owner_id, name, description,
 		points_per_win, points_per_loss, starting_requisition,
 		created_at, updated_at`
 
+// scanCampaign scans a campaign row without loading its chapters, teams, or warbands
+//
 // Arguments: row (pgx.Row) - a row selecting campaignColumns
 //
 // Returns: models.Campaign - the scanned campaign with empty (non-nil) chapters, teams and warbands; error - on scan failure
-//
-// Scans a campaign row without loading its chapters, teams, or warbands
 func scanCampaign(row pgx.Row) (models.Campaign, error) {
 	var c models.Campaign
 	err := row.Scan(
@@ -37,11 +37,11 @@ func scanCampaign(row pgx.Row) (models.Campaign, error) {
 	return c, nil
 }
 
+// withCampaignDetails loads a campaign's child records from their tables and attaches them
+//
 // Arguments: c (models.Campaign) - campaign whose chapters, teams, and warbands should be loaded
 //
 // Returns: models.Campaign - the campaign with its chapters, teams, and warbands populated; error - on query failure
-//
-// Loads a campaign's child records from their tables and attaches them
 func withCampaignDetails(c models.Campaign) (models.Campaign, error) {
 	id := c.ID.String()
 
@@ -64,11 +64,11 @@ func withCampaignDetails(c models.Campaign) (models.Campaign, error) {
 	return c, nil
 }
 
+// CreateCampaign inserts a new campaign row
+//
 // Arguments: campaign (models.Campaign) - campaign record to insert, with JoinCode set (see NewJoinCode)
 //
 // Returns: error - ErrLimitReached if the owner already has MaxCampaignsPerUser campaigns, or another error if the insert fails
-//
-// Inserts a new campaign row
 func CreateCampaign(campaign models.Campaign) error {
 	ctx := context.Background()
 
@@ -105,11 +105,11 @@ func CreateCampaign(campaign models.Campaign) error {
 	return tx.Commit(ctx)
 }
 
+// GetCampaignByID fetches a single campaign by ID, regardless of owner
+//
 // Arguments: id (string) - campaign ID
 //
 // Returns: models.Campaign - the campaign with its chapters, teams, and warbands; error - pgx.ErrNoRows if not found
-//
-// Fetches a single campaign by ID, regardless of owner
 func GetCampaignByID(id string) (models.Campaign, error) {
 	query := `SELECT ` + campaignColumns + ` FROM campaigns WHERE id = $1`
 
@@ -121,11 +121,11 @@ func GetCampaignByID(id string) (models.Campaign, error) {
 	return withCampaignDetails(c)
 }
 
+// GetCampaignsForUser fetches every campaign a user owns or participates in through one of their warbands
+//
 // Arguments: userID (string) - user ID
 //
 // Returns: []models.Campaign - campaigns the user owns or has a warband in, newest first, each with details; error - on query or scan failure
-//
-// Fetches every campaign a user owns or participates in through one of their warbands
 func GetCampaignsForUser(userID string) ([]models.Campaign, error) {
 	query := `
 		SELECT ` + campaignColumns + `
@@ -169,11 +169,11 @@ func GetCampaignsForUser(userID string) ([]models.Campaign, error) {
 	return campaigns, nil
 }
 
+// UpdateCampaign partially updates a campaign's name, description, and settings
+//
 // Arguments: id (string) - campaign ID; ownerID (string) - ID of the owning user; req (models.UpdateCampaignRequest) - fields to change, nil fields are left as-is
 //
 // Returns: models.Campaign - the updated campaign with details; error - pgx.ErrNoRows if not found or not owned by ownerID
-//
-// Partially updates a campaign's name, description, and settings
 func UpdateCampaign(id string, ownerID string, req models.UpdateCampaignRequest) (models.Campaign, error) {
 	query := `
 		UPDATE campaigns
@@ -197,11 +197,11 @@ func UpdateCampaign(id string, ownerID string, req models.UpdateCampaignRequest)
 	return withCampaignDetails(c)
 }
 
+// DeleteCampaign deletes a campaign owned by the user; its chapters, teams, and memberships are removed by foreign key cascades
+//
 // Arguments: id (string) - campaign ID; ownerID (string) - ID of the owning user
 //
 // Returns: error - pgx.ErrNoRows if no campaign matched the ID and owner, or another error on failure
-//
-// Deletes a campaign owned by the user; its chapters, teams, and memberships are removed by foreign key cascades
 func DeleteCampaign(id string, ownerID string) error {
 	query := `DELETE FROM campaigns WHERE id = $1 AND owner_id = $2`
 
@@ -216,11 +216,11 @@ func DeleteCampaign(id string, ownerID string) error {
 	return nil
 }
 
+// IsCampaignOwner checks whether a user owns a campaign
+//
 // Arguments: campaignID (string) - campaign ID; userID (string) - user ID to check
 //
 // Returns: bool - true if the user owns the campaign; error - on query failure
-//
-// Checks whether a user owns a campaign
 func IsCampaignOwner(campaignID string, userID string) (bool, error) {
 	var exists bool
 
@@ -238,11 +238,11 @@ func IsCampaignOwner(campaignID string, userID string) (bool, error) {
 	return exists, nil
 }
 
+// GetChaptersByCampaignID fetches all chapters of a campaign
+//
 // Arguments: campaignID (string) - campaign ID
 //
 // Returns: []models.CampaignChapter - the campaign's chapters ordered by sort_order (empty if none); error - on query or scan failure
-//
-// Fetches all chapters of a campaign
 func GetChaptersByCampaignID(campaignID string) ([]models.CampaignChapter, error) {
 	query := `
 		SELECT id, campaign_id, title, description, sort_order, created_at, updated_at
@@ -269,11 +269,11 @@ func GetChaptersByCampaignID(campaignID string) ([]models.CampaignChapter, error
 	return chapters, rows.Err()
 }
 
+// AddChapter inserts a chapter into a campaign
+//
 // Arguments: chapter (models.CampaignChapter) - chapter to insert; autoOrder (bool) - when true, ignore chapter.SortOrder and append after the last chapter
 //
 // Returns: models.CampaignChapter - the inserted chapter with its final sort_order; error - pgx.ErrNoRows if the campaign does not exist, ErrLimitReached if it already has MaxChaptersPerCampaign chapters, or another error on failure
-//
-// Inserts a chapter into a campaign
 func AddChapter(chapter models.CampaignChapter, autoOrder bool) (models.CampaignChapter, error) {
 	ctx := context.Background()
 
@@ -318,11 +318,11 @@ func AddChapter(chapter models.CampaignChapter, autoOrder bool) (models.Campaign
 	return ch, nil
 }
 
+// UpdateChapter partially updates a chapter's title, description, and sort order
+//
 // Arguments: campaignID (string) - campaign ID; chapterID (string) - chapter ID; req (models.UpdateChapterRequest) - fields to change, nil fields are left as-is
 //
 // Returns: models.CampaignChapter - the updated chapter; error - pgx.ErrNoRows if the chapter is not in that campaign
-//
-// Partially updates a chapter's title, description, and sort order
 func UpdateChapter(campaignID string, chapterID string, req models.UpdateChapterRequest) (models.CampaignChapter, error) {
 	query := `
 		UPDATE campaign_chapters
@@ -342,11 +342,11 @@ func UpdateChapter(campaignID string, chapterID string, req models.UpdateChapter
 	return ch, err
 }
 
+// DeleteChapter deletes a chapter from a campaign
+//
 // Arguments: campaignID (string) - campaign ID; chapterID (string) - chapter ID
 //
 // Returns: error - pgx.ErrNoRows if the chapter is not in that campaign, or another error on failure
-//
-// Deletes a chapter from a campaign
 func DeleteChapter(campaignID string, chapterID string) error {
 	query := `DELETE FROM campaign_chapters WHERE id = $1 AND campaign_id = $2`
 
@@ -361,11 +361,11 @@ func DeleteChapter(campaignID string, chapterID string) error {
 	return nil
 }
 
+// GetTeamsByCampaignID fetches all teams of a campaign
+//
 // Arguments: campaignID (string) - campaign ID
 //
 // Returns: []models.CampaignTeam - the campaign's teams, oldest first (empty if none); error - on query or scan failure
-//
-// Fetches all teams of a campaign
 func GetTeamsByCampaignID(campaignID string) ([]models.CampaignTeam, error) {
 	query := `
 		SELECT id, campaign_id, name, created_at, updated_at
@@ -392,11 +392,11 @@ func GetTeamsByCampaignID(campaignID string) ([]models.CampaignTeam, error) {
 	return teams, rows.Err()
 }
 
+// CreateTeam inserts a team into a campaign
+//
 // Arguments: team (models.CampaignTeam) - team to insert
 //
 // Returns: error - SQLSTATE 23505 if the campaign already has a team with that name, ErrLimitReached if it already has MaxTeamsPerCampaign teams, or another error on failure
-//
-// Inserts a team into a campaign
 func CreateTeam(team models.CampaignTeam) error {
 	ctx := context.Background()
 
@@ -427,11 +427,11 @@ func CreateTeam(team models.CampaignTeam) error {
 	return tx.Commit(ctx)
 }
 
+// RenameTeam renames a team
+//
 // Arguments: campaignID (string) - campaign ID; teamID (string) - team ID; name (string) - new team name
 //
 // Returns: models.CampaignTeam - the renamed team; error - pgx.ErrNoRows if the team is not in that campaign, SQLSTATE 23505 if the name is taken
-//
-// Renames a team
 func RenameTeam(campaignID string, teamID string, name string) (models.CampaignTeam, error) {
 	query := `
 		UPDATE campaign_teams
@@ -447,11 +447,11 @@ func RenameTeam(campaignID string, teamID string, name string) (models.CampaignT
 	return t, err
 }
 
+// DeleteTeam deletes a team that has no warbands on it
+//
 // Arguments: campaignID (string) - campaign ID; teamID (string) - team ID
 //
 // Returns: error - pgx.ErrNoRows if the team is not in that campaign, SQLSTATE 23503 if warbands are still on the team, or another error on failure
-//
-// Deletes a team that has no warbands on it
 func DeleteTeam(campaignID string, teamID string) error {
 	query := `DELETE FROM campaign_teams WHERE id = $1 AND campaign_id = $2`
 
@@ -466,11 +466,11 @@ func DeleteTeam(campaignID string, teamID string) error {
 	return nil
 }
 
+// GetCampaignWarbands fetches all warbands that have joined a campaign
+//
 // Arguments: campaignID (string) - campaign ID
 //
 // Returns: []models.CampaignWarband - the campaign's member warbands with their teams, in join order (empty if none); error - on query or scan failure
-//
-// Fetches all warbands that have joined a campaign
 func GetCampaignWarbands(campaignID string) ([]models.CampaignWarband, error) {
 	query := `
 		SELECT cw.campaign_id, cw.warband_id, w.name, cw.team_id, cw.joined_at
@@ -498,11 +498,11 @@ func GetCampaignWarbands(campaignID string) ([]models.CampaignWarband, error) {
 	return members, rows.Err()
 }
 
+// JoinCampaign adds a warband to a campaign on the given team
+//
 // Arguments: campaignID (string) - campaign ID; warbandID (string) - warband ID; teamID (string) - team to join; joinCode (*string) - the code the caller supplied, or nil to skip the check for a caller who is already authorized (the campaign owner)
 //
 // Returns: error - pgx.ErrNoRows if the campaign or team does not exist, ErrInvalidJoinCode if joinCode is given and does not match, ErrLimitReached if the campaign already has MaxWarbandsPerCampaign warbands, SQLSTATE 23505 if the warband is already in the campaign, SQLSTATE 23503 if the warband does not exist
-//
-// Adds a warband to a campaign on the given team
 func JoinCampaign(campaignID string, warbandID string, teamID string, joinCode *string) error {
 	ctx := context.Background()
 
@@ -548,11 +548,11 @@ func JoinCampaign(campaignID string, warbandID string, teamID string, joinCode *
 	return tx.Commit(ctx)
 }
 
+// SetWarbandTeam moves a member warband to another team in the same campaign
+//
 // Arguments: campaignID (string) - campaign ID; warbandID (string) - warband ID; teamID (string) - team to move to
 //
 // Returns: error - pgx.ErrNoRows if the warband is not in the campaign or the team is not in that campaign, or another error on failure
-//
-// Moves a member warband to another team in the same campaign
 func SetWarbandTeam(campaignID string, warbandID string, teamID string) error {
 	query := `
 		UPDATE campaign_warbands cw
@@ -573,11 +573,11 @@ func SetWarbandTeam(campaignID string, warbandID string, teamID string) error {
 	return nil
 }
 
+// LeaveCampaign removes a warband from a campaign
+//
 // Arguments: campaignID (string) - campaign ID; warbandID (string) - warband ID
 //
 // Returns: error - pgx.ErrNoRows if the warband is not in the campaign, or another error on failure
-//
-// Removes a warband from a campaign
 func LeaveCampaign(campaignID string, warbandID string) error {
 	query := `DELETE FROM campaign_warbands WHERE campaign_id = $1 AND warband_id = $2`
 

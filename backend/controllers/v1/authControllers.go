@@ -17,12 +17,12 @@ import (
 	"battlebarge/repositories"
 )
 
+// userInsertConflict maps a unique violation on the users table to a 409 message, using the
+// constraint's name so an email conflict is not reported as a username one
+//
 // Arguments: err (error) - the error from inserting a user row
 //
 // Returns: string - the message to send the client; bool - true if err is a unique-constraint conflict on the username (any capitalization) or email
-//
-// Maps a unique violation on the users table to a 409 message, using the
-// constraint's name so an email conflict is not reported as a username one
 func userInsertConflict(err error) (string, bool) {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) || pgErr.Code != "23505" {
@@ -38,11 +38,11 @@ func userInsertConflict(err error) (string, bool) {
 	return "", false
 }
 
+// RegisterUser handles POST /auth/register. Creates a Firebase user and a matching Postgres user, rolling back the Firebase user if the database insert fails. Usernames are unique ignoring case. The new user must verify their email before the API will accept their token
+//
 // Arguments: gin context
 //
 // Returns: None (responds 201 with the new user ID and email_verification_required; 400 on bad input, including a username over 50 or email over 255 characters; 409 if email or username is taken)
-//
-// POST /auth/register. Creates a Firebase user and a matching Postgres user, rolling back the Firebase user if the database insert fails. Usernames are unique ignoring case. The new user must verify their email before the API will accept their token
 func RegisterUser(c *gin.Context) {
 	var req models.RegisterRequest
 

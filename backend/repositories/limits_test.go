@@ -127,7 +127,8 @@ func TestLimit_ChaptersTeamsAndMembersPerCampaign(t *testing.T) {
 	}
 }
 
-// A missing parent is reported as not found, not as a limit.
+// TestLimit_MissingParent checks that a missing parent is reported as not found,
+// not as a limit.
 func TestLimit_MissingParent(t *testing.T) {
 	testutil.SetupDB(t)
 	now := time.Now()
@@ -138,8 +139,8 @@ func TestLimit_MissingParent(t *testing.T) {
 	}
 }
 
-// The cap must hold when many requests arrive at once: only the free slots get
-// filled, however many requests race for them.
+// TestLimit_HoldsUnderConcurrency checks that the cap holds when many requests
+// arrive at once: only the free slots get filled, however many requests race for them.
 func TestLimit_HoldsUnderConcurrency(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")

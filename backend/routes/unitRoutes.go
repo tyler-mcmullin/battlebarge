@@ -7,11 +7,11 @@ import (
 	"battlebarge/middleware"
 )
 
+// GetUnitControllers gets unit controllers
+//
 // Arguments: gin router
 //
 // Returns: None
-//
-// Gets unit controllers
 func GetUnitControllers(r *gin.Engine) {
 	group := r.Group("/units")
 

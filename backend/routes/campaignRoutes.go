@@ -10,11 +10,11 @@ import (
 	"battlebarge/middleware"
 )
 
+// GetCampaignControllers gets campaign controllers
+//
 // Arguments: gin router
 //
 // Returns: None
-//
-// Gets campaign controllers
 func GetCampaignControllers(r *gin.Engine) {
 	group := r.Group("/campaigns")
 

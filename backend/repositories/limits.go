@@ -25,11 +25,11 @@ const (
 // ErrLimitReached is returned when creating a record would exceed its cap.
 var ErrLimitReached = errors.New("limit reached")
 
+// lockAndCheckLimit locks the parent row until the transaction ends, then checks the child count against the limit
+//
 // Arguments: ctx (context.Context); tx (pgx.Tx) - the open transaction; parentTable (string) - table of the parent row, a trusted constant; parentID (any) - the parent's ID; countQuery (string) - a trusted constant query counting existing children for $1; limit (int) - the maximum allowed
 //
 // Returns: error - pgx.ErrNoRows if the parent does not exist, ErrLimitReached if the parent is already at the limit, or another error on failure
-//
-// Locks the parent row until the transaction ends, then checks the child count against the limit
 func lockAndCheckLimit(ctx context.Context, tx pgx.Tx, parentTable string, parentID any, countQuery string, limit int) error {
 	var one int
 	lock := `SELECT 1 FROM ` + parentTable + ` WHERE id = $1 FOR NO KEY UPDATE`

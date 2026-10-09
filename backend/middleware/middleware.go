@@ -38,31 +38,31 @@ var verifyToken TokenVerifier = func(ctx context.Context, idToken string) (*auth
 // local development with REQUIRE_EMAIL_VERIFICATION=false.
 var requireVerifiedEmail = true
 
+// SetRequireVerifiedEmail turns the verified-email requirement on or off
+//
 // Arguments: required (bool) - whether RequireAuth should reject unverified emails
 //
 // Returns: func() - restores the previous setting
-//
-// Turns the verified-email requirement on or off
 func SetRequireVerifiedEmail(required bool) func() {
 	prev := requireVerifiedEmail
 	requireVerifiedEmail = required
 	return func() { requireVerifiedEmail = prev }
 }
 
+// EmailVerificationRequired reports the verified-email requirement, so the registration response can tell clients what to expect
+//
 // Arguments: None
 //
 // Returns: bool - true if RequireAuth currently rejects unverified emails
-//
-// Reports the verified-email requirement, so the registration response can tell clients what to expect
 func EmailVerificationRequired() bool {
 	return requireVerifiedEmail
 }
 
+// SetTokenVerifier replaces the token verifier so tests can run RequireAuth without Firebase
+//
 // Arguments: v (TokenVerifier) - the verifier RequireAuth should use
 //
 // Returns: func() - restores the previous verifier
-//
-// Replaces the token verifier so tests can run RequireAuth without Firebase
 func SetTokenVerifier(v TokenVerifier) func() {
 	prev := verifyToken
 	verifyToken = v
@@ -144,11 +144,11 @@ func LoadUser() gin.HandlerFunc {
 	}
 }
 
+// ParseOrigins parses a comma-separated origin list for the CORS middleware
+//
 // Arguments: raw (string) - comma-separated origins, e.g. the CORS_ALLOWED_ORIGINS env var
 //
 // Returns: []string - the origins with whitespace, empty entries, and trailing slashes removed
-//
-// Parses a comma-separated origin list for the CORS middleware
 func ParseOrigins(raw string) []string {
 	var origins []string
 	for _, o := range strings.Split(raw, ",") {
@@ -160,16 +160,16 @@ func ParseOrigins(raw string) []string {
 	return origins
 }
 
-// Arguments: allowedOrigins ([]string) - exact origins (scheme://host[:port]) that browsers may call the API from
-//
-// Returns: gin.HandlerFunc - the CORS middleware
-//
-// Lets browser frontends on the allowed origins call the API. Requests from an
+// CORS lets browser frontends on the allowed origins call the API. Requests from an
 // allowed origin get Access-Control-Allow-Origin; preflight (OPTIONS) requests
 // are answered with 204 and the allowed methods and headers, or 403 if the
 // origin is not allowed. Requests with no Origin header (curl, same-origin,
 // server-to-server) are untouched. With an empty list no origin is allowed.
 // Origins are matched exactly; "*" is deliberately not supported.
+//
+// Arguments: allowedOrigins ([]string) - exact origins (scheme://host[:port]) that browsers may call the API from
+//
+// Returns: gin.HandlerFunc - the CORS middleware
 func CORS(allowedOrigins []string) gin.HandlerFunc {
 	allowed := make(map[string]bool, len(allowedOrigins))
 	for _, o := range allowedOrigins {
@@ -212,13 +212,13 @@ func CORS(allowedOrigins []string) gin.HandlerFunc {
 	}
 }
 
+// MaxBodySize rejects requests whose declared Content-Length is over maxBytes with 413,
+// and caps the bytes read from bodies with no declared length (chunked), so a
+// client cannot make the server buffer an arbitrarily large body
+//
 // Arguments: maxBytes (int64) - largest request body to accept
 //
 // Returns: gin.HandlerFunc - the body size limit middleware
-//
-// Rejects requests whose declared Content-Length is over maxBytes with 413,
-// and caps the bytes read from bodies with no declared length (chunked), so a
-// client cannot make the server buffer an arbitrarily large body
 func MaxBodySize(maxBytes int64) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.ContentLength > maxBytes {
@@ -235,14 +235,14 @@ type visitor struct {
 	lastSeen time.Time
 }
 
-// Arguments: limit (rate.Limit) - sustained requests per second per client IP; burst (int) - how many requests a client may make at once
-//
-// Returns: gin.HandlerFunc - the rate limiting middleware
-//
-// Limits each client IP with a token bucket and responds 429 with a
+// RateLimit limits each client IP with a token bucket and responds 429 with a
 // Retry-After header when the bucket is empty. State is in memory, so it is
 // per server instance. The client IP comes from c.ClientIP(), so configure
 // trusted proxies correctly or all clients behind a proxy share one bucket.
+//
+// Arguments: limit (rate.Limit) - sustained requests per second per client IP; burst (int) - how many requests a client may make at once
+//
+// Returns: gin.HandlerFunc - the rate limiting middleware
 func RateLimit(limit rate.Limit, burst int) gin.HandlerFunc {
 	var mu sync.Mutex
 	visitors := map[string]*visitor{}

@@ -46,17 +46,29 @@ Request structs in `models/models.go` carry the validation (binding tags): lengt
 
 ## Documentation convention
 
-Every function except `main` has a doc comment directly above it in this format, so it shows on hover:
+Every function except `main` has a doc comment directly above it, so it shows on hover. It follows the Go convention that GoLand checks for: the comment **starts with the function's name**, as a short summary sentence, followed by the `Arguments` and `Returns` lines:
 
 ```go
-// Arguments: id (string) - unit ID; amount (int) - value to add
+// IncrementUnitXP adds to a unit's experience, clamping the result at 0
+//
+// Arguments: id (string) - unit ID; amount (int) - value to add, may be negative
 //
 // Returns: models.Unit - the updated unit; error - pgx.ErrNoRows if not found
-//
-// Short description of what the function does
+func IncrementUnitXP(id string, amount int) (models.Unit, error) {
 ```
 
-Gin handlers use `gin context` for arguments and list the HTTP method/path and response status codes in place of returns. Add this comment to every new function, and update it whenever a function's arguments, returns, or behavior change.
+Gin handlers say what they handle in the summary and use `gin context` for arguments, listing the response status codes in place of returns:
+
+```go
+// AddUnitXP handles PATCH /units/:id/xp. Adds the requested amount to a unit's experience
+//
+// Arguments: gin context
+//
+// Returns: None (responds 200 with the updated unit; 400 on bad input; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed)
+func AddUnitXP(c *gin.Context) {
+```
+
+Write the summary as a sentence that continues from the name ("IncrementUnitXP adds ...", "Handles ..."). Extra detail goes in further paragraphs under the summary, before `Arguments`. Test functions start with their name too ("TestX checks that ..."). Add this comment to every new function, and update it whenever a function's arguments, returns, or behavior change.
 
 ## TODO
 

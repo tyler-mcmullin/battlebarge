@@ -12,11 +12,11 @@ import (
 	"battlebarge/models"
 )
 
+// CreateWarband inserts a new warband row into the warbands table
+//
 // Arguments: warband (models.Warband) - warband record to insert
 //
 // Returns: error - ErrLimitReached if the user already has MaxWarbandsPerUser warbands, or another error if the insert fails
-//
-// Inserts a new warband row into the warbands table
 func CreateWarband(warband models.Warband) error {
 	ctx := context.Background()
 
@@ -61,11 +61,11 @@ func CreateWarband(warband models.Warband) error {
 	return tx.Commit(ctx)
 }
 
+// UpdateWarband partially updates a warband owned by the user and returns it with units, point totals, and crusade points populated
+//
 // Arguments: id (string) - warband ID; userID (string) - ID of the owning user; req (models.UpdateWarbandRequest) - fields to change, nil fields are left as-is
 //
 // Returns: models.Warband - the updated warband with its units and computed totals; error - pgx.ErrNoRows if not found or not owned by userID
-//
-// Partially updates a warband owned by the user and returns it with units, point totals, and crusade points populated
 func UpdateWarband(id string, userID string, req models.UpdateWarbandRequest) (models.Warband, error) {
 	query := `
 		UPDATE warbands
@@ -113,11 +113,11 @@ func UpdateWarband(id string, userID string, req models.UpdateWarbandRequest) (m
 	return w, nil
 }
 
+// GetAllWarbands fetches every warband belonging to a user
+//
 // Arguments: id (string) - ID of the owning user
 //
 // Returns: []models.Warband - the user's warbands, newest first, each with units and computed totals; error - on query or scan failure
-//
-// Fetches every warband belonging to a user
 func GetAllWarbands(id string) ([]models.Warband, error) {
 	query := `
 		SELECT id, user_id, name, faction, description,
@@ -172,11 +172,11 @@ func GetAllWarbands(id string) ([]models.Warband, error) {
 	return warbands, nil
 }
 
+// GetWarbandByID fetches a single warband by ID, regardless of owner
+//
 // Arguments: id (string) - warband ID
 //
 // Returns: models.Warband - the warband with units and computed totals; error - pgx.ErrNoRows if not found
-//
-// Fetches a single warband by ID, regardless of owner
 func GetWarbandByID(id string) (models.Warband, error) {
 	var w models.Warband
 
@@ -215,11 +215,11 @@ func GetWarbandByID(id string) (models.Warband, error) {
 	return w, nil
 }
 
+// DeleteWarband deletes a warband owned by the user
+//
 // Arguments: id (string) - warband ID; userID (string) - ID of the owning user
 //
 // Returns: error - pgx.ErrNoRows if no warband matched the ID and owner, or another error on failure
-//
-// Deletes a warband owned by the user
 func DeleteWarband(id string, userID string) error {
 	query := `
 		DELETE FROM warbands
@@ -240,11 +240,11 @@ func DeleteWarband(id string, userID string) error {
 
 // Helpers
 
+// IsWarbandOwner checks whether a user owns a warband
+//
 // Arguments: warbandID (string) - warband ID; userID (string) - user ID to check
 //
 // Returns: bool - true if the user owns the warband; error - on query failure
-//
-// Checks whether a user owns a warband
 func IsWarbandOwner(warbandID string, userID string) (bool, error) {
 	var exists bool
 
@@ -262,11 +262,11 @@ func IsWarbandOwner(warbandID string, userID string) (bool, error) {
 	return exists, nil
 }
 
+// SaveWarband writes all editable fields of a warband back to the database, overwriting existing values
+//
 // Arguments: warband (models.Warband) - warband with updated fields
 //
 // Returns: error - pgx.ErrNoRows if no warband matched the ID and owner, or another error on failure
-//
-// Writes all editable fields of a warband back to the database, overwriting existing values
 func SaveWarband(warband models.Warband) error {
 	query := `
 		UPDATE warbands
@@ -292,11 +292,11 @@ func SaveWarband(warband models.Warband) error {
 	return nil
 }
 
+// CalculateCrusadePoints totals crusade points across units: +1 for each perk and -1 for each scar
+//
 // Arguments: units ([]models.Unit) - units to total
 //
 // Returns: int - crusade points
-//
-// Totals crusade points across units: +1 for each perk and -1 for each scar
 func CalculateCrusadePoints(units []models.Unit) int {
 	points := 0
 	for _, u := range units {

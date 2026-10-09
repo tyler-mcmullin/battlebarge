@@ -14,11 +14,11 @@ import (
 	"battlebarge/repositories"
 )
 
+// requireCampaignOwner guards campaign-owner-only routes. Non-owners get 404 so a campaign's existence is not revealed
+//
 // Arguments: c (gin context); campaignID (string) - the :id path parameter; uid (string) - authenticated user ID
 //
 // Returns: bool - true if campaignID is a valid UUID and uid owns that campaign; otherwise false after responding 404 (or 500 on a database error)
-//
-// Guards campaign-owner-only routes. Non-owners get 404 so a campaign's existence is not revealed
 func requireCampaignOwner(c *gin.Context, campaignID string, uid string) bool {
 	if !validUUID(campaignID) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
@@ -38,11 +38,11 @@ func requireCampaignOwner(c *gin.Context, campaignID string, uid string) bool {
 	return true
 }
 
+// CreateCampaign handles POST /campaigns/create. Creates a campaign owned by the authenticated user, applying defaults for omitted settings. The response includes the campaign's join_code, which only the owner can see
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 201 with the campaign; 400 on bad input; 401 if unauthenticated; 409 if the user already owns the maximum number of campaigns)
-//
-// POST /campaigns/create. Creates a campaign owned by the authenticated user, applying defaults for omitted settings. The response includes the campaign's join_code, which only the owner can see
 func CreateCampaign(c *gin.Context) {
 	var req models.CreateCampaignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -98,11 +98,11 @@ func CreateCampaign(c *gin.Context) {
 	c.JSON(http.StatusCreated, campaign)
 }
 
+// GetMyCampaigns handles GET /campaigns. Lists the authenticated user's campaigns; join_code is included only on campaigns they own
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 200 with the campaigns the user owns or has a warband in; 401 if unauthenticated)
-//
-// GET /campaigns. Lists the authenticated user's campaigns; join_code is included only on campaigns they own
 func GetMyCampaigns(c *gin.Context) {
 	uid, ok := requireUID(c)
 	if !ok {
@@ -131,11 +131,11 @@ func GetMyCampaigns(c *gin.Context) {
 	c.JSON(http.StatusOK, campaigns)
 }
 
+// GetCampaign handles GET /campaigns/:id. Public endpoint returning a campaign with its chapters, teams, and member warbands
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 200 with the campaign; 404 if not found or the id is malformed)
-//
-// GET /campaigns/:id. Public endpoint returning a campaign with its chapters, teams, and member warbands
 func GetCampaign(c *gin.Context) {
 	id := c.Param("id")
 	if !validUUID(id) {
@@ -156,11 +156,11 @@ func GetCampaign(c *gin.Context) {
 	c.JSON(http.StatusOK, campaign)
 }
 
+// UpdateCampaign handles PATCH /campaigns/:id. Partially updates a campaign owned by the authenticated user
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 200 with the updated campaign; 400 on bad input; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed)
-//
-// PATCH /campaigns/:id. Partially updates a campaign owned by the authenticated user
 func UpdateCampaign(c *gin.Context) {
 	id := c.Param("id")
 	uid, ok := requireUID(c)
@@ -190,11 +190,11 @@ func UpdateCampaign(c *gin.Context) {
 	c.JSON(http.StatusOK, campaign)
 }
 
+// DeleteCampaign handles DELETE /campaigns/:id. Deletes a campaign owned by the authenticated user along with its chapters, teams, and memberships
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 204; 401 if unauthenticated; 404 if not found, not owned, or the id is malformed)
-//
-// DELETE /campaigns/:id. Deletes a campaign owned by the authenticated user along with its chapters, teams, and memberships
 func DeleteCampaign(c *gin.Context) {
 	id := c.Param("id")
 	uid, ok := requireUID(c)
@@ -217,11 +217,11 @@ func DeleteCampaign(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// CreateChapter handles POST /campaigns/:id/chapters. Adds a chapter to a campaign owned by the authenticated user, appended after the last chapter unless sort_order is given
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 201 with the chapter; 400 on bad input; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed; 409 if the campaign already has the maximum number of chapters)
-//
-// POST /campaigns/:id/chapters. Adds a chapter to a campaign owned by the authenticated user, appended after the last chapter unless sort_order is given
 func CreateChapter(c *gin.Context) {
 	id := c.Param("id")
 	uid, ok := requireUID(c)
@@ -266,11 +266,11 @@ func CreateChapter(c *gin.Context) {
 	c.JSON(http.StatusCreated, created)
 }
 
+// UpdateChapter handles PATCH /campaigns/:id/chapters/:chapterId. Partially updates a chapter of a campaign owned by the authenticated user
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 200 with the updated chapter; 400 on bad input; 401 if unauthenticated; 404 if the campaign or chapter is not found, not owned, or an id is malformed)
-//
-// PATCH /campaigns/:id/chapters/:chapterId. Partially updates a chapter of a campaign owned by the authenticated user
 func UpdateChapter(c *gin.Context) {
 	id := c.Param("id")
 	chapterID := c.Param("chapterId")
@@ -305,11 +305,11 @@ func UpdateChapter(c *gin.Context) {
 	c.JSON(http.StatusOK, chapter)
 }
 
+// DeleteChapter handles DELETE /campaigns/:id/chapters/:chapterId. Deletes a chapter of a campaign owned by the authenticated user
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 204; 401 if unauthenticated; 404 if the campaign or chapter is not found, not owned, or an id is malformed)
-//
-// DELETE /campaigns/:id/chapters/:chapterId. Deletes a chapter of a campaign owned by the authenticated user
 func DeleteChapter(c *gin.Context) {
 	id := c.Param("id")
 	chapterID := c.Param("chapterId")
@@ -337,11 +337,11 @@ func DeleteChapter(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// CreateTeam handles POST /campaigns/:id/teams. Adds a named team to a campaign owned by the authenticated user. A campaign can have any number of teams
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 201 with the team; 400 on bad input; 401 if unauthenticated; 404 if the campaign is not found, not owned, or the id is malformed; 409 if the campaign already has a team with that name or the maximum number of teams)
-//
-// POST /campaigns/:id/teams. Adds a named team to a campaign owned by the authenticated user. A campaign can have any number of teams
 func CreateTeam(c *gin.Context) {
 	id := c.Param("id")
 	uid, ok := requireUID(c)
@@ -383,11 +383,11 @@ func CreateTeam(c *gin.Context) {
 	c.JSON(http.StatusCreated, team)
 }
 
+// RenameTeam handles PATCH /campaigns/:id/teams/:teamId. Renames a team of a campaign owned by the authenticated user
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 200 with the renamed team; 400 on bad input; 401 if unauthenticated; 404 if the campaign or team is not found, not owned, or an id is malformed; 409 if the name is already used in the campaign)
-//
-// PATCH /campaigns/:id/teams/:teamId. Renames a team of a campaign owned by the authenticated user
 func RenameTeam(c *gin.Context) {
 	id := c.Param("id")
 	teamID := c.Param("teamId")
@@ -426,11 +426,11 @@ func RenameTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, team)
 }
 
+// DeleteTeam handles DELETE /campaigns/:id/teams/:teamId. Deletes an empty team of a campaign owned by the authenticated user
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 204; 401 if unauthenticated; 404 if the campaign or team is not found, not owned, or an id is malformed; 409 if warbands are still on the team)
-//
-// DELETE /campaigns/:id/teams/:teamId. Deletes an empty team of a campaign owned by the authenticated user
 func DeleteTeam(c *gin.Context) {
 	id := c.Param("id")
 	teamID := c.Param("teamId")
@@ -462,11 +462,11 @@ func DeleteTeam(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// JoinCampaign handles POST /campaigns/:id/warbands. Joins a warband owned by the authenticated user to a campaign on one of its teams. Needs the campaign's join_code (shared by the owner), not just its ID
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 201 with the updated campaign; 400 on bad input or malformed warband_id/team_id; 401 if unauthenticated; 403 if the join code is missing or wrong (the campaign owner does not need one); 404 if the campaign id is malformed, the warband is not owned by the user, or the team is not in the campaign; 409 if the warband is already in the campaign or the campaign has the maximum number of warbands)
-//
-// POST /campaigns/:id/warbands. Joins a warband owned by the authenticated user to a campaign on one of its teams. Needs the campaign's join_code (shared by the owner), not just its ID
 func JoinCampaign(c *gin.Context) {
 	id := c.Param("id")
 	uid, ok := requireUID(c)
@@ -544,11 +544,11 @@ func JoinCampaign(c *gin.Context) {
 	c.JSON(http.StatusCreated, campaign)
 }
 
+// requireMembershipAccess guards membership changes: the campaign owner or the warband's owner may move or remove a member
+//
 // Arguments: c (gin context); campaignID (string) - campaign ID; warbandID (string) - warband ID from the path; uid (string) - authenticated user ID
 //
 // Returns: bool - true if the ids are valid and uid owns the campaign or the warband; otherwise false after responding 404 (or 500 on a database error)
-//
-// Guards membership changes: the campaign owner or the warband's owner may move or remove a member
 func requireMembershipAccess(c *gin.Context, campaignID string, warbandID string, uid string) bool {
 	if !validUUID(campaignID) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "campaign not found"})
@@ -581,11 +581,11 @@ func requireMembershipAccess(c *gin.Context, campaignID string, warbandID string
 	return true
 }
 
+// ChangeWarbandTeam handles PATCH /campaigns/:id/warbands/:warbandId. Moves a warband to another team; allowed for the campaign owner or the warband's owner
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 200 with the updated campaign; 400 on bad input; 401 if unauthenticated; 404 if the warband or team is not in the campaign, the user owns neither the campaign nor the warband, or an id is malformed)
-//
-// PATCH /campaigns/:id/warbands/:warbandId. Moves a warband to another team; allowed for the campaign owner or the warband's owner
 func ChangeWarbandTeam(c *gin.Context) {
 	id := c.Param("id")
 	warbandID := c.Param("warbandId")
@@ -625,11 +625,11 @@ func ChangeWarbandTeam(c *gin.Context) {
 	c.JSON(http.StatusOK, campaign)
 }
 
+// LeaveCampaign handles DELETE /campaigns/:id/warbands/:warbandId. Removes a warband from a campaign; allowed for the campaign owner or the warband's owner
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 204; 401 if unauthenticated; 404 if the warband is not in the campaign, the user owns neither the campaign nor the warband, or an id is malformed)
-//
-// DELETE /campaigns/:id/warbands/:warbandId. Removes a warband from a campaign; allowed for the campaign owner or the warband's owner
 func LeaveCampaign(c *gin.Context) {
 	id := c.Param("id")
 	warbandID := c.Param("warbandId")
@@ -653,11 +653,11 @@ func LeaveCampaign(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// GetCampaignJoinCode handles GET /campaigns/:id/join-code. Shows the campaign's join code to its owner, to share with players
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 200 with the join code; 401 if unauthenticated; 403 if the email is not verified; 404 if the campaign is not found, not owned, or the id is malformed)
-//
-// GET /campaigns/:id/join-code. Shows the campaign's join code to its owner, to share with players
 func GetCampaignJoinCode(c *gin.Context) {
 	id := c.Param("id")
 	uid, ok := requireUID(c)
@@ -681,11 +681,11 @@ func GetCampaignJoinCode(c *gin.Context) {
 	c.JSON(http.StatusOK, models.JoinCodeResponse{JoinCode: code})
 }
 
+// RotateCampaignJoinCode handles POST /campaigns/:id/join-code/rotate. Replaces the campaign's join code, so the old one stops working. Existing members are unaffected
+//
 // Arguments: c (gin context)
 //
 // Returns: None (responds 200 with the new join code; 401 if unauthenticated; 403 if the email is not verified; 404 if the campaign is not found, not owned, or the id is malformed)
-//
-// POST /campaigns/:id/join-code/rotate. Replaces the campaign's join code, so the old one stops working. Existing members are unaffected
 func RotateCampaignJoinCode(c *gin.Context) {
 	id := c.Param("id")
 	uid, ok := requireUID(c)

@@ -119,14 +119,14 @@ CREATE TABLE campaign_warbands (
 CREATE INDEX campaign_warbands_warband_id_idx ON campaign_warbands (warband_id);
 `
 
-// Arguments: t (*testing.T) - the running test
-//
-// Returns: None
-//
-// Points db.PGClient at a throwaway schema in the Postgres database named by
+// SetupDB points db.PGClient at a throwaway schema in the Postgres database named by
 // TEST_POSTGRES_URL, creating the tables the repositories need. The schema is
 // dropped when the test finishes. The test is skipped if TEST_POSTGRES_URL is
 // not set, so the suite still passes without a database.
+//
+// Arguments: t (*testing.T) - the running test
+//
+// Returns: None
 func SetupDB(t *testing.T) {
 	t.Helper()
 
@@ -177,11 +177,11 @@ func SetupDB(t *testing.T) {
 	})
 }
 
+// InsertUser inserts a user directly into the test database; the email and username are derived from the ID
+//
 // Arguments: t (*testing.T) - the running test; id (string) - Firebase-style user ID
 //
 // Returns: models.User - the inserted user
-//
-// Inserts a user directly into the test database; the email and username are derived from the ID
 func InsertUser(t *testing.T, id string) models.User {
 	t.Helper()
 
@@ -202,11 +202,11 @@ func InsertUser(t *testing.T, id string) models.User {
 	return u
 }
 
+// InsertWarband inserts a warband directly into the test database
+//
 // Arguments: t (*testing.T) - the running test; userID (string) - owning user ID; name (string) - warband name
 //
 // Returns: models.Warband - the inserted warband (without computed fields)
-//
-// Inserts a warband directly into the test database
 func InsertWarband(t *testing.T, userID, name string) models.Warband {
 	t.Helper()
 
@@ -227,11 +227,11 @@ func InsertWarband(t *testing.T, userID, name string) models.Warband {
 	return w
 }
 
+// InsertUnit inserts a unit directly into the test database
+//
 // Arguments: t (*testing.T) - the running test; warbandID (uuid.UUID) - owning warband; name (string) - unit name; points (int) - point cost
 //
 // Returns: models.Unit - the inserted unit (without perks)
-//
-// Inserts a unit directly into the test database
 func InsertUnit(t *testing.T, warbandID uuid.UUID, name string, points int) models.Unit {
 	t.Helper()
 
@@ -254,11 +254,11 @@ func InsertUnit(t *testing.T, warbandID uuid.UUID, name string, points int) mode
 	return u
 }
 
+// InsertCampaign inserts a campaign directly into the test database
+//
 // Arguments: t (*testing.T) - the running test; ownerID (string) - owning user ID; name (string) - campaign name
 //
 // Returns: models.Campaign - the inserted campaign (without chapters, teams, or warbands), with JoinCode set to "TESTCODE01"
-//
-// Inserts a campaign directly into the test database
 func InsertCampaign(t *testing.T, ownerID, name string) models.Campaign {
 	t.Helper()
 
@@ -273,11 +273,11 @@ func InsertCampaign(t *testing.T, ownerID, name string) models.Campaign {
 	return c
 }
 
+// InsertTeam inserts a campaign team directly into the test database
+//
 // Arguments: t (*testing.T) - the running test; campaignID (uuid.UUID) - owning campaign; name (string) - team name
 //
 // Returns: models.CampaignTeam - the inserted team
-//
-// Inserts a campaign team directly into the test database
 func InsertTeam(t *testing.T, campaignID uuid.UUID, name string) models.CampaignTeam {
 	t.Helper()
 

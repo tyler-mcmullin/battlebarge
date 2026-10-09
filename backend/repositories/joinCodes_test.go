@@ -145,8 +145,8 @@ func TestJoinCampaignChecksTheCode(t *testing.T) {
 	}
 }
 
-// A wrong code must be refused before anything else is revealed: not the team
-// check, and not the member limit.
+// TestJoinCampaign_WrongCodeBeatsOtherErrors checks that a wrong code is refused
+// before anything else is revealed: not the team check, and not the member limit.
 func TestJoinCampaign_WrongCodeBeatsOtherErrors(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")

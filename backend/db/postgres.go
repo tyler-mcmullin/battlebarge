@@ -9,8 +9,12 @@ import (
 
 var PGClient *pgxpool.Pool
 
-// No arguments, no returns. Function connects to a PostgreSQL database
-// and creates a pgx Pool struct to interact with the database
+// ConnectPostgres connects to the PostgreSQL database named by POSTGRES_URL,
+// checks that it answers, and stores the pgx pool in PGClient
+//
+// Arguments: None
+//
+// Returns: error - non-nil if the pool cannot be created or the database does not answer a ping
 func ConnectPostgres() error {
 	connStr := os.Getenv("POSTGRES_URL")
 

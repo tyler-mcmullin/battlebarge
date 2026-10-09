@@ -12,32 +12,32 @@ import (
 	"battlebarge/middleware"
 )
 
+// validUUID reports whether id is a well-formed UUID, so malformed IDs can be rejected
+// before they reach Postgres (where the uuid cast would fail with a 500)
+//
 // Arguments: id (string) - a path or body parameter that should be a UUID
 //
 // Returns: bool - true if id parses as a UUID
-//
-// Reports whether id is a well-formed UUID, so malformed IDs can be rejected
-// before they reach Postgres (where the uuid cast would fail with a 500)
 func validUUID(id string) bool {
 	_, err := uuid.Parse(id)
 	return err == nil
 }
 
+// serverError logs err and responds 500 without exposing database or Firebase error text to the client
+//
 // Arguments: c (gin context); err (error) - the underlying failure
 //
 // Returns: None (responds 500 with a generic message)
-//
-// Logs err and responds 500 without exposing database or Firebase error text to the client
 func serverError(c *gin.Context, err error) {
 	log.Printf("%s %s: %v", c.Request.Method, c.Request.URL.Path, err)
 	c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 }
 
+// pgErrCode extracts the SQLSTATE so controllers can map constraint violations to 4xx responses
+//
 // Arguments: err (error) - an error returned from a repository call
 //
 // Returns: string - the Postgres SQLSTATE code (e.g. "23505" for a unique violation), or "" if err is not a Postgres error
-//
-// Extracts the SQLSTATE so controllers can map constraint violations to 4xx responses
 func pgErrCode(err error) string {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
@@ -46,11 +46,11 @@ func pgErrCode(err error) string {
 	return ""
 }
 
+// requireUID reads the uid set by the auth middleware, responding 401 if it is missing
+//
 // Arguments: c (gin context)
 //
 // Returns: string - the authenticated user's ID; bool - false if there is none (a 401 has already been written)
-//
-// Reads the uid set by the auth middleware, responding 401 if it is missing
 func requireUID(c *gin.Context) (string, bool) {
 	uid := c.GetString(middleware.ContextUIDKey)
 	if uid == "" {

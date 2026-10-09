@@ -19,6 +19,23 @@ Tracks what is needed before launching Battlebarge. Check items off (`[x]`) as t
 - [ ] **Release mode (config).** Set `GIN_MODE=release`.
 - [ ] **Hosting and deployment.** Nothing exists yet (no Dockerfile or deploy config). Choose a host, build and deploy, and put it behind HTTPS (TLS terminated by the platform or a proxy).
 
+## Frontend
+
+The Angular app in `frontend/` works end to end in development (sign-up, email verification, sign-in, warbands, units, perks). Before it can be deployed:
+
+- [ ] **Fill in `frontend/src/environments/environment.ts`.** This is the production build's config and is currently empty (the app throws a clear "Firebase is not configured" error at startup until it is filled in). `apiUrl` is the deployed API, or `/api` if a proxy or hosting rewrite serves both from one origin. `firebase` is the web app config from the Firebase console (Project settings, Your apps); those values identify the project and are not secrets, so they can be committed.
+- [ ] **Choose frontend hosting.** Firebase Hosting is the simplest fit (same project, free tier): serve `frontend/dist/frontend/browser` with a rewrite of every path to `index.html`, since this is a single-page app. S3 with CloudFront or Cloudflare Pages work too.
+- [ ] **Decide how the browser reaches the API.** Same origin (a rewrite or proxy sending `/api` to the Go server) needs no CORS. A separate API domain needs `CORS_ALLOWED_ORIGINS` set to the frontend's exact origin (https, no trailing slash).
+- [ ] **Firebase console.** Add the frontend's domain under Authentication, Authorized domains, or sign-in and verification links will not work.
+- [ ] **Restrict the Firebase web API key** to the frontend's domain (HTTP referrers) in the Google Cloud console. The key is public, but restricting it limits misuse.
+- [ ] **Frontend CI.** A job running `npm ci`, `npm run test:ci`, `npm run build` and `npm run api:check` in `frontend/` (the last one fails when the generated API types are out of date).
+- [ ] **Browser end-to-end tests.** I checked the full user journey (register, verify, sign in, warbands, units, kills, XP, perks, sign out, delete, mobile width) in a real headless browser against the emulator, but that script was a throwaway. Turn it into committed Playwright tests.
+- [ ] **Self-host the fonts (optional).** The app loads Roboto and the Material Symbols icons from Google Fonts. That works, but it makes third-party requests and complicates a strict Content-Security-Policy.
+- [ ] **Security headers on the frontend host:** Content-Security-Policy, `X-Content-Type-Options: nosniff`, and a referrer policy.
+- [ ] **Accessibility pass.** Page titles are real headings and form errors are announced, but nobody has tested with a screen reader or checked colour contrast and keyboard order in every dialog.
+- [ ] **Campaign screens.** The API supports campaigns, teams, chapters and join codes; the frontend does not have screens for them yet.
+- [ ] **Bundle size.** The initial download is about 578 kB (144 kB compressed), mostly Firebase and Angular Material. The build warns at 700 kB.
+
 ## Security
 
 - [ ] **Set `TRUSTED_PROXIES` (config).** Rate limiting keys on the client IP. With the variable unset, the server ignores `X-Forwarded-For` and uses the connection's address, which is safe but means every client behind a load balancer shares one bucket. Set it to the load balancer's address(es) or CIDR range(s), comma-separated.

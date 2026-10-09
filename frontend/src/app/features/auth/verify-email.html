@@ -1,0 +1,38 @@
+<mat-card class="auth-card">
+  <mat-card-header>
+    <h1 mat-card-title>Check your inbox</h1>
+  </mat-card-header>
+  <mat-card-content>
+    <p>
+      We sent a verification link to <strong>{{ auth.user()?.email }}</strong
+      >. Click it, then come back here and press the button below. You cannot use Battlebarge until
+      your email is verified.
+    </p>
+
+    @if (emulatorLinksUrl) {
+      <p class="hint">
+        Local development: the Firebase emulator does not send email. Open
+        <a [href]="emulatorLinksUrl" target="_blank" rel="noopener">its list of links</a>
+        and open the newest <code>oobLink</code>.
+      </p>
+    }
+
+    <div class="actions">
+      <button mat-flat-button type="button" (click)="continue()" [disabled]="busy()">
+        @if (busy()) {
+          <mat-spinner diameter="20" />
+        } @else {
+          I've verified my email
+        }
+      </button>
+      <button mat-stroked-button type="button" (click)="resend()" [disabled]="resendIn() > 0">
+        @if (resendIn() > 0) {
+          Resend in {{ resendIn() }}s
+        } @else {
+          Resend email
+        }
+      </button>
+      <button mat-button type="button" (click)="signOut()">Sign out</button>
+    </div>
+  </mat-card-content>
+</mat-card>

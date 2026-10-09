@@ -1,0 +1,55 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <h2 mat-dialog-title>{{ warband ? 'Edit warband' : 'New warband' }}</h2>
+
+  <mat-dialog-content class="dialog-form">
+    @if (error()) {
+      <p class="form-error" role="alert">{{ error() }}</p>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" />
+      <mat-error>{{ message(form.controls.name) }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Faction</mat-label>
+      <input matInput formControlName="faction" />
+      <mat-error>{{ message(form.controls.faction) }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea matInput rows="3" formControlName="description"></textarea>
+      <mat-hint align="end"
+        >{{ form.controls.description.value.length }} / {{ limits.warbandDescription }}</mat-hint
+      >
+      <mat-error>{{ message(form.controls.description) }}</mat-error>
+    </mat-form-field>
+
+    <div class="row">
+      <mat-form-field appearance="outline">
+        <mat-label>Requisition points</mat-label>
+        <input matInput type="number" min="0" formControlName="requisition_points" />
+        <mat-error>{{ message(form.controls.requisition_points) }}</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Supply limit</mat-label>
+        <input matInput type="number" min="0" formControlName="supply_limit" />
+        <mat-error>{{ message(form.controls.supply_limit) }}</mat-error>
+      </mat-form-field>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" mat-dialog-close>Cancel</button>
+    <button mat-flat-button type="submit" [disabled]="busy()">
+      @if (busy()) {
+        <mat-spinner diameter="20" />
+      } @else {
+        {{ warband ? 'Save' : 'Create' }}
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

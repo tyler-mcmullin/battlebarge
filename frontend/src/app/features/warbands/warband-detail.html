@@ -1,0 +1,78 @@
+<a mat-button routerLink="/warbands" class="back">
+  <mat-icon fontSet="material-symbols-outlined">arrow_back</mat-icon>
+  All warbands
+</a>
+
+@if (loading()) {
+  <div class="centered"><mat-spinner diameter="40" /></div>
+} @else if (notFound()) {
+  <div class="centered">
+    <p>This warband does not exist, or it isn't yours.</p>
+    <a mat-flat-button routerLink="/warbands">Back to your warbands</a>
+  </div>
+} @else if (error()) {
+  <div class="centered">
+    <p class="form-error" role="alert">{{ error() }}</p>
+    <button mat-stroked-button type="button" (click)="load(id(), true)">Try again</button>
+  </div>
+} @else if (warband(); as w) {
+  <header class="header">
+    <div>
+      <h1>{{ w.name }}</h1>
+      @if (w.faction) {
+        <p class="faction">{{ w.faction }}</p>
+      }
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button type="button" (click)="edit(w)">Edit</button>
+      <button mat-stroked-button type="button" (click)="remove(w)">Delete</button>
+    </div>
+  </header>
+
+  @if (w.description) {
+    <p class="description">{{ w.description }}</p>
+  }
+
+  <dl class="stats">
+    <div>
+      <dt>Units</dt>
+      <dd>{{ w.num_units }}</dd>
+    </div>
+    <div>
+      <dt>Points</dt>
+      <dd>{{ w.total_points_cost }}</dd>
+    </div>
+    <div>
+      <dt>Crusade points</dt>
+      <dd>{{ w.crusade_points }}</dd>
+    </div>
+    <div>
+      <dt>Requisition</dt>
+      <dd>{{ w.requisition_points }}</dd>
+    </div>
+    <div>
+      <dt>Supply limit</dt>
+      <dd>{{ w.supply_limit }}</dd>
+    </div>
+  </dl>
+
+  <section>
+    <div class="section-header">
+      <h2>Units</h2>
+      <button mat-flat-button type="button" (click)="addUnit(w)">
+        <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+        Add unit
+      </button>
+    </div>
+
+    @if (w.units.length === 0) {
+      <p class="empty">No units yet.</p>
+    } @else {
+      <div class="units">
+        @for (unit of w.units; track unit.id) {
+          <app-unit-card [unit]="unit" (changed)="refresh()" (deleted)="refresh()" />
+        }
+      </div>
+    }
+  </section>
+}

@@ -1,0 +1,15 @@
+<mat-toolbar class="toolbar">
+  <a routerLink="/" class="brand">
+    <mat-icon fontSet="material-symbols-outlined">shield</mat-icon>
+    <span>Battlebarge</span>
+  </a>
+  <span class="spacer"></span>
+  @if (auth.isSignedIn()) {
+    <span class="who">{{ auth.user()?.email }}</span>
+    <button mat-button type="button" (click)="signOut()">Sign out</button>
+  }
+</mat-toolbar>
+
+<main class="page">
+  <router-outlet />
+</main>

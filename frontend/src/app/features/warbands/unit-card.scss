@@ -1,0 +1,81 @@
+.unit mat-card-header {
+  align-items: center;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.points {
+  font: var(--mat-sys-title-medium);
+  margin-right: 4px;
+}
+
+.bio {
+  color: var(--mat-sys-on-surface-variant);
+  white-space: pre-wrap;
+}
+
+.counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 8px 0;
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  .label {
+    font: var(--mat-sys-label-large);
+    color: var(--mat-sys-on-surface-variant);
+    min-width: 36px;
+  }
+
+  .value {
+    font: var(--mat-sys-title-large);
+    min-width: 32px;
+    text-align: center;
+  }
+}
+
+.perks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.perk {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 12px;
+  border-radius: 16px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-label-large);
+
+  &.scar {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  .remove {
+    display: inline-flex;
+    border: 0;
+    padding: 2px;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}

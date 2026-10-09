@@ -1,7 +1,10 @@
-# Secrets: any .env file at any depth (the backend's .env lives at the repo root)
+# Secrets: any .env file at any depth (the backend's lives in backend/)
 .env
 .env.*
 *.env
+
+# JetBrains IDE settings (run configurations can contain environment variables)
+.idea/
 
 .firebaserc
 firebase.json

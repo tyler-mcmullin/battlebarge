@@ -106,12 +106,13 @@ func main() {
 
 // Arguments: raw (string) - comma-separated values
 //
-// Returns: []string - the trimmed, non-empty values (an empty, non-nil slice if there are none)
+// Returns: []string - the trimmed, non-empty values (nil if there are none, which
+// gin's SetTrustedProxies treats the same as an empty list: trust no proxies)
 //
 // Splits a comma-separated environment variable such as TRUSTED_PROXIES
 func splitList(raw string) []string {
-	out := []string{}
-	for _, v := range strings.Split(raw, ",") {
+	var out []string
+	for v := range strings.SplitSeq(raw, ",") {
 		if v = strings.TrimSpace(v); v != "" {
 			out = append(out, v)
 		}

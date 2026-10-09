@@ -1,9 +1,13 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 // All files here are throwaway fakes in a temp directory; the project's real
@@ -116,10 +120,65 @@ func TestLoadEnvFile_MalformedFileStopsStartup(t *testing.T) {
 }
 
 func TestSplitList(t *testing.T) {
-	for in, want := range map[string]int{"": 0, "  ": 0, "a": 1, "a, b ,,c": 3} {
-		got := splitList(in)
-		if got == nil || len(got) != want {
-			t.Errorf("splitList(%q) = %#v, want %d non-nil entries", in, got, want)
+	tests := []struct {
+		in   string
+		want []string
+	}{
+		{"", nil},
+		{"  ", nil},
+		{",,", nil},
+		{"a", []string{"a"}},
+		{"a, b ,,c", []string{"a", "b", "c"}},
+	}
+	for _, tt := range tests {
+		got := splitList(tt.in)
+		if len(got) != len(tt.want) {
+			t.Errorf("splitList(%q) = %#v, want %#v", tt.in, got, tt.want)
+			continue
 		}
+		for i := range got {
+			if got[i] != tt.want[i] {
+				t.Errorf("splitList(%q) = %#v, want %#v", tt.in, got, tt.want)
+			}
+		}
+	}
+}
+
+// TestTrustedProxiesSetting checks how gin treats splitList's result: with no
+// TRUSTED_PROXIES the X-Forwarded-For header must be ignored, and with one set
+// it must be believed, but only from that proxy.
+func TestTrustedProxiesSetting(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	clientIP := func(trustedProxies, remoteAddr string) string {
+		r := gin.New()
+		if err := r.SetTrustedProxies(splitList(trustedProxies)); err != nil {
+			t.Fatal(err)
+		}
+		var got string
+		r.GET("/", func(c *gin.Context) { got = c.ClientIP() })
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.RemoteAddr = remoteAddr
+		req.Header.Set("X-Forwarded-For", "203.0.113.9")
+		r.ServeHTTP(httptest.NewRecorder(), req)
+		return got
+	}
+
+	tests := []struct {
+		name, trusted, remote, want string
+	}{
+		{"unset: the header is ignored", "", "10.0.0.1:4000", "10.0.0.1"},
+		{"blank: the header is ignored", " , ", "10.0.0.1:4000", "10.0.0.1"},
+		{"set, request from that proxy: the header is believed", "10.0.0.1", "10.0.0.1:4000", "203.0.113.9"},
+		{"set as a range: believed from inside it", "10.0.0.0/24", "10.0.0.7:4000", "203.0.113.9"},
+		{"set, request from anyone else: the header is ignored", "10.0.0.1", "198.51.100.5:4000", "198.51.100.5"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := clientIP(tt.trusted, tt.remote); got != tt.want {
+				t.Errorf("ClientIP = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

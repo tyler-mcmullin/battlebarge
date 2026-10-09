@@ -150,7 +150,7 @@ func LoadUser() gin.HandlerFunc {
 //
 // Parses a comma-separated origin list for the CORS middleware
 func ParseOrigins(raw string) []string {
-	origins := []string{}
+	var origins []string
 	for _, o := range strings.Split(raw, ",") {
 		o = strings.TrimRight(strings.TrimSpace(o), "/")
 		if o != "" {

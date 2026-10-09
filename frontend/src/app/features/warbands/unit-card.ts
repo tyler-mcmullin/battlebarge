@@ -1,4 +1,4 @@
-import { Component, inject, input, linkedSignal, output, signal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
@@ -37,16 +37,50 @@ export class UnitCard {
   protected readonly current = linkedSignal(() => this.unit());
   protected readonly busy = signal(false);
 
-  protected adjustKills(amount: number): Promise<void> {
-    return this.save(this.api.addKills(this.current().id, amount));
+  /** Kills added (or removed, if negative) on screen but not yet sent to the API. */
+  protected readonly pendingKills = signal(0);
+  /** The kill count to show: the saved count plus the unsaved change. */
+  protected readonly shownKills = computed(() => this.current().kills + this.pendingKills());
+
+  /** Changes the on-screen kill count only; nothing is sent until `submitKills`. */
+  protected adjustKills(amount: number): void {
+    this.pendingKills.update((pending) => Math.max(pending + amount, -this.current().kills));
   }
 
-  protected adjustXp(amount: number): Promise<void> {
-    return this.save(this.api.addXp(this.current().id, amount));
+  /** Sends the unsaved kill change to the API. On failure, it is kept so the user can retry. */
+  protected async submitKills(): Promise<void> {
+    const amount = this.pendingKills();
+    if (amount === 0) {
+      return;
+    }
+    if (await this.save(this.api.addKills(this.current().id, amount))) {
+      this.pendingKills.set(0);
+    }
   }
 
-  protected removePerk(perk: Perk): Promise<void> {
-    return this.save(this.api.deletePerk(this.current().id, perk.id));
+  /** XP added (or removed, if negative) on screen but not yet sent to the API. */
+  protected readonly pendingXp = signal(0);
+  /** The XP count to show: the saved count plus the unsaved change. */
+  protected readonly shownXp = computed(() => this.current().experience + this.pendingXp());
+
+  /** Changes the on-screen XP count only; nothing is sent until `submitXp`. */
+  protected adjustXp(amount: number): void {
+    this.pendingXp.update((pending) => Math.max(pending + amount, -this.current().experience));
+  }
+
+  /** Sends the unsaved XP change to the API. On failure, it is kept so the user can retry. */
+  protected async submitXp(): Promise<void> {
+    const amount = this.pendingXp();
+    if (amount === 0) {
+      return;
+    }
+    if (await this.save(this.api.addXp(this.current().id, amount))) {
+      this.pendingXp.set(0);
+    }
+  }
+
+  protected async removePerk(perk: Perk): Promise<void> {
+    await this.save(this.api.deletePerk(this.current().id, perk.id));
   }
 
   protected async addPerk(): Promise<void> {
@@ -102,13 +136,15 @@ export class UnitCard {
     }
   }
 
-  /** Runs one API call that returns the updated unit. */
-  private async save(request: Observable<Unit>): Promise<void> {
+  /** Runs one API call that returns the updated unit; resolves true if it succeeded. */
+  private async save(request: Observable<Unit>): Promise<boolean> {
     this.busy.set(true);
     try {
       this.apply(await firstValueFrom(request));
+      return true;
     } catch (err) {
       this.report(err);
+      return false;
     } finally {
       this.busy.set(false);
     }

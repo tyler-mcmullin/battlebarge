@@ -56,10 +56,16 @@ describe('UnitCard', () => {
     expect(text(fixture, 'xp')).toBe('5');
   });
 
-  it('adds a kill: sends +1 and shows the number the API returns', async () => {
+  it('adds a kill: shows it with a checkmark, and only calls the API on submit', async () => {
     const fixture = setup(makeUnit({ kills: 2 }));
-    click(fixture, 'Add a kill');
+    expect(html(fixture).querySelector('button[aria-label="Save kills"]')).toBeNull();
 
+    click(fixture, 'Add a kill');
+    fixture.detectChanges();
+    http.expectNone('/api/units/unit-1/kills');
+    expect(text(fixture, 'kills')).toBe('3');
+
+    click(fixture, 'Save kills');
     const req = http.expectOne('/api/units/unit-1/kills');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ amount: 1 });
@@ -68,18 +74,44 @@ describe('UnitCard', () => {
     fixture.detectChanges();
 
     expect(text(fixture, 'kills')).toBe('3');
+    expect(html(fixture).querySelector('button[aria-label="Save kills"]')).toBeNull();
     expect(changed).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends several clicks as one total, and hides the checkmark when they cancel out', async () => {
+    const fixture = setup(makeUnit({ kills: 2 }));
+    click(fixture, 'Add a kill');
+    click(fixture, 'Add a kill');
+    click(fixture, 'Remove a kill');
+    click(fixture, 'Add a kill');
+    fixture.detectChanges();
+    click(fixture, 'Save kills');
+    const req = http.expectOne('/api/units/unit-1/kills');
+    expect(req.request.body).toEqual({ amount: 2 });
+    req.flush(makeUnit({ kills: 4 }));
+    await fixture.whenStable();
+
+    click(fixture, 'Add a kill');
+    click(fixture, 'Remove a kill');
+    fixture.detectChanges();
+    expect(html(fixture).querySelector('button[aria-label="Save kills"]')).toBeNull();
   });
 
   it('removes experience with -1', async () => {
     const fixture = setup(makeUnit({ experience: 5 }));
     click(fixture, 'Remove an experience point');
+    fixture.detectChanges();
+    http.expectNone('/api/units/unit-1/xp');
+    expect(text(fixture, 'xp')).toBe('4');
+
+    click(fixture, 'Save XP');
     const req = http.expectOne('/api/units/unit-1/xp');
     expect(req.request.body).toEqual({ amount: -1 });
     req.flush(makeUnit({ experience: 4 }));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(text(fixture, 'xp')).toBe('4');
+    expect(html(fixture).querySelector('button[aria-label="Save XP"]')).toBeNull();
   });
 
   it('cannot go below zero: the minus buttons are disabled at 0', () => {
@@ -96,17 +128,23 @@ describe('UnitCard', () => {
     expect(
       html(fixture).querySelector<HTMLButtonElement>('button[aria-label="Add a kill"]')?.disabled,
     ).toBe(false);
+    expect(
+      html(fixture).querySelector<HTMLButtonElement>('button[aria-label="Save XP"]'),
+    ).toBeNull();
   });
 
-  it('keeps the old number and tells the user when the API refuses', async () => {
+  it('keeps the unsaved change and tells the user when the API refuses', async () => {
     const fixture = setup(makeUnit({ kills: 2 }));
     click(fixture, 'Add a kill');
+    fixture.detectChanges();
+    click(fixture, 'Save kills');
     http
       .expectOne('/api/units/unit-1/kills')
       .flush({ error: 'invalid request body' }, { status: 400, statusText: 'Bad Request' });
     await vi.waitFor(() => expect(notify.error).toHaveBeenCalledWith('Invalid request body'));
     fixture.detectChanges();
-    expect(text(fixture, 'kills')).toBe('2');
+    expect(text(fixture, 'kills')).toBe('3');
+    expect(html(fixture).querySelector('button[aria-label="Save kills"]')).not.toBeNull();
     expect(changed).not.toHaveBeenCalled();
   });
 

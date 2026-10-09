@@ -244,3 +244,47 @@ func TestOpenAPIResponseShapes(t *testing.T) {
 type bodyBytes struct{ b []byte }
 
 func (b *bodyBytes) Bytes() []byte { return b.b }
+
+// TestOpenAPIResponseSchemasRequireAllFields checks that every schema the API
+// returns lists all of its properties as required (except fields marked
+// x-owner-only), so generated client types do not make values the API always
+// returns look optional.
+func TestOpenAPIResponseSchemasRequireAllFields(t *testing.T) {
+	spec := loadSpec(t)
+	schemas := asMap(asMap(spec["components"])["schemas"])
+
+	for name, raw := range schemas {
+		if strings.HasSuffix(name, "Request") {
+			continue // request bodies have optional fields by design
+		}
+		schema := asMap(raw)
+		props := asMap(schema["properties"])
+		if schema["type"] != "object" || len(props) == 0 {
+			continue
+		}
+
+		required := map[string]bool{}
+		if list, ok := schema["required"].([]any); ok {
+			for _, r := range list {
+				required[r.(string)] = true
+			}
+		}
+
+		for prop, p := range props {
+			if asMap(p)["x-owner-only"] == true {
+				if required[prop] {
+					t.Errorf("%s.%s is owner-only, so it must not be required", name, prop)
+				}
+				continue
+			}
+			if !required[prop] {
+				t.Errorf("%s.%s is returned by the API but not listed as required", name, prop)
+			}
+		}
+		for r := range required {
+			if _, ok := props[r]; !ok {
+				t.Errorf("%s requires %q, which is not one of its properties", name, r)
+			}
+		}
+	}
+}

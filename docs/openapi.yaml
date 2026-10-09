@@ -84,6 +84,7 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [message, user_id, email_verification_required]
                 properties:
                   message: { type: string, example: user created }
                   user_id: { type: string, description: Firebase UID. }
@@ -849,6 +850,7 @@ components:
 
     User:
       type: object
+      required: [id, email, username, created_at, updated_at]
       properties:
         id: { type: string, description: Firebase UID. }
         email: { type: string, format: email }
@@ -858,6 +860,7 @@ components:
 
     Perk:
       type: object
+      required: [id, name, description, is_scar]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -868,6 +871,7 @@ components:
 
     Unit:
       type: object
+      required: [id, warband_id, unit_name, narrative_name, bio, points, kills, experience, perks, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         warband_id: { type: string, format: uuid }
@@ -885,6 +889,7 @@ components:
 
     Warband:
       type: object
+      required: [id, user_id, name, faction, description, requisition_points, supply_limit, created_at, updated_at, units, num_units, total_points_cost, crusade_points]
       properties:
         id: { type: string, format: uuid }
         user_id: { type: string, description: Owner's Firebase UID. }
@@ -906,6 +911,7 @@ components:
 
     CampaignSettings:
       type: object
+      required: [points_per_win, points_per_loss, starting_requisition]
       properties:
         points_per_win: { type: integer }
         points_per_loss: { type: integer }
@@ -913,6 +919,7 @@ components:
 
     CampaignChapter:
       type: object
+      required: [id, campaign_id, title, description, sort_order, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         campaign_id: { type: string, format: uuid }
@@ -924,6 +931,7 @@ components:
 
     CampaignTeam:
       type: object
+      required: [id, campaign_id, name, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         campaign_id: { type: string, format: uuid }
@@ -933,6 +941,7 @@ components:
 
     CampaignWarband:
       type: object
+      required: [campaign_id, warband_id, warband_name, team_id, joined_at]
       description: A warband's membership in a campaign.
       properties:
         campaign_id: { type: string, format: uuid }
@@ -943,6 +952,7 @@ components:
 
     Campaign:
       type: object
+      required: [id, owner_id, name, description, settings, created_at, updated_at, chapters, teams, warbands]
       properties:
         id: { type: string, format: uuid }
         owner_id: { type: string, description: Owner's Firebase UID. }
@@ -1098,6 +1108,7 @@ components:
 
     JoinCodeResponse:
       type: object
+      required: [join_code]
       properties:
         join_code: { type: string }
 

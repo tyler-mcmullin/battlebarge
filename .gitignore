@@ -20,3 +20,6 @@ testlogin_files/
 
 # Claude Code - local machine settings
 .claude/settings.local.json
+
+# Personal Project Notes
+project_notes.txt

@@ -94,6 +94,10 @@ a {
   padding-top: 8px;
 }
 
+.mat-mdc-dialog-container .mat-mdc-dialog-title + .mat-mdc-dialog-content.dialog-form-long {
+  padding-top: 8px;
+}
+
 .dialog-form {
   display: flex;
   flex-direction: column;
@@ -102,6 +106,25 @@ a {
   padding-top: 8px;
 
   .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+
+.dialog-form-long {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: min(520px, 80vw);
+  padding-top: 8px;
+
+  .row {
+    display: grid;
+    gap: 12px;
+  }
+
+  .row-multi {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;

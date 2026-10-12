@@ -1,7 +1,7 @@
 <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
   <h2 mat-dialog-title>{{ data.unit ? 'Edit unit' : 'Add a unit' }}</h2>
 
-  <mat-dialog-content class="dialog-form">
+  <mat-dialog-content class="dialog-form-long">
     @if (error()) {
       <p class="form-error" role="alert">{{ error() }}</p>
     }

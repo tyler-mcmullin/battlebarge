@@ -1,7 +1,7 @@
 <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
   <h2 mat-dialog-title>{{ warband ? 'Edit warband' : 'New warband' }}</h2>
 
-  <mat-dialog-content class="dialog-form">
+  <mat-dialog-content class="dialog-form-long">
     @if (error()) {
       <p class="form-error" role="alert">{{ error() }}</p>
     }
@@ -28,7 +28,7 @@
         <mat-error>{{ message(form.controls.description) }}</mat-error>
       </mat-form-field>
 
-      <div class="row">
+      <div class="row-multi">
         <mat-form-field appearance="outline">
           <mat-label>Requisition points</mat-label>
           <input matInput type="number" min="0" formControlName="requisition_points" />

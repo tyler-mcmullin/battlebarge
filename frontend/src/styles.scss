@@ -90,11 +90,16 @@ a {
 }
 
 // Forms inside dialogs.
+.mat-mdc-dialog-container .mat-mdc-dialog-title + .mat-mdc-dialog-content.dialog-form {
+  padding-top: 8px;
+}
+
 .dialog-form {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: min(520px, 80vw);
+  padding-top: 8px;
 
   .row {
     display: grid;

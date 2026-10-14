@@ -30,8 +30,8 @@ info:
     A 404 is also returned when a resource exists but belongs to someone else,
     and when an ID in the URL is not a valid UUID.
 
-    **IDs and times.** IDs are UUIDs (users are the exception: their ID is the
-    Firebase UID). Timestamps are RFC 3339 strings.
+    **IDs and times.** IDs are UUIDs, including users, who have their own ID
+    (the Firebase UID is never exposed). Timestamps are RFC 3339 strings.
 
     **CORS.** Browsers may call the API from the origins listed in the server's
     `CORS_ALLOWED_ORIGINS` setting.
@@ -87,7 +87,7 @@ paths:
                 required: [message, user_id, email_verification_required]
                 properties:
                   message: { type: string, example: user created }
-                  user_id: { type: string, description: Firebase UID. }
+                  user_id: { type: string, format: uuid }
                   email_verification_required:
                     type: boolean
                     description: |
@@ -852,7 +852,7 @@ components:
       type: object
       required: [id, email, username, created_at, updated_at]
       properties:
-        id: { type: string, description: Firebase UID. }
+        id: { type: string, format: uuid }
         email: { type: string, format: email }
         username: { type: string }
         created_at: { type: string, format: date-time }
@@ -892,7 +892,7 @@ components:
       required: [id, user_id, name, faction, description, requisition_points, supply_limit, created_at, updated_at, units, num_units, total_points_cost, crusade_points]
       properties:
         id: { type: string, format: uuid }
-        user_id: { type: string, description: Owner's Firebase UID. }
+        user_id: { type: string, format: uuid, description: Owner's user ID. }
         name: { type: string }
         faction: { type: string }
         description: { type: string }
@@ -955,7 +955,7 @@ components:
       required: [id, owner_id, name, description, settings, created_at, updated_at, chapters, teams, warbands]
       properties:
         id: { type: string, format: uuid }
-        owner_id: { type: string, description: Owner's Firebase UID. }
+        owner_id: { type: string, format: uuid, description: Owner's user ID. }
         name: { type: string }
         description: { type: string }
         settings: { $ref: '#/components/schemas/CampaignSettings' }

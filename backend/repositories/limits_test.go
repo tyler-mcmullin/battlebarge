@@ -25,11 +25,11 @@ func TestLimit_WarbandsPerUser(t *testing.T) {
 		testutil.InsertWarband(t, "owner", "w")
 	}
 
-	if err := repositories.CreateWarband(newWarband("owner", "over")); !errors.Is(err, repositories.ErrLimitReached) {
+	if err := repositories.CreateWarband(newWarband(testutil.UserID("owner"), "over")); !errors.Is(err, repositories.ErrLimitReached) {
 		t.Errorf("err = %v, want ErrLimitReached", err)
 	}
 	// the cap is per user
-	if err := repositories.CreateWarband(newWarband("other", "fine")); err != nil {
+	if err := repositories.CreateWarband(newWarband(testutil.UserID("other"), "fine")); err != nil {
 		t.Errorf("another user should be unaffected: %v", err)
 	}
 }
@@ -82,7 +82,7 @@ func TestLimit_CampaignsPerUser(t *testing.T) {
 	}
 
 	now := time.Now()
-	err := repositories.CreateCampaign(models.Campaign{ID: uuid.New(), OwnerID: "owner", Name: "over", CreatedAt: now, UpdatedAt: now})
+	err := repositories.CreateCampaign(models.Campaign{ID: uuid.New(), OwnerID: testutil.UserID("owner"), Name: "over", CreatedAt: now, UpdatedAt: now})
 	if !errors.Is(err, repositories.ErrLimitReached) {
 		t.Errorf("err = %v, want ErrLimitReached", err)
 	}

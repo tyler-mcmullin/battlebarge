@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"battlebarge/models"
 	"battlebarge/repositories"
 	"battlebarge/testutil"
@@ -18,7 +20,7 @@ func TestUserInsertConflict(t *testing.T) {
 
 	now := time.Now()
 	user := func(id, email, username string) models.User {
-		return models.User{ID: id, Email: email, Username: username, CreatedAt: now, UpdatedAt: now}
+		return models.User{ID: uuid.New(), FirebaseId: id, Email: email, Username: username, CreatedAt: now, UpdatedAt: now}
 	}
 	if err := repositories.CreateUser(user("u1", "a@example.com", "Alice")); err != nil {
 		t.Fatal(err)

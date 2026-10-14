@@ -40,7 +40,7 @@ export interface paths {
                         "application/json": {
                             /** @example user created */
                             message: string;
-                            /** @description Firebase UID. */
+                            /** Format: uuid */
                             user_id: string;
                             /**
                              * @description True when the user must verify their email before the API
@@ -1527,7 +1527,7 @@ export interface components {
             error: string;
         };
         User: {
-            /** @description Firebase UID. */
+            /** Format: uuid */
             id: string;
             /** Format: email */
             email: string;
@@ -1565,7 +1565,10 @@ export interface components {
         Warband: {
             /** Format: uuid */
             id: string;
-            /** @description Owner's Firebase UID. */
+            /**
+             * Format: uuid
+             * @description Owner's user ID.
+             */
             user_id: string;
             name: string;
             faction: string;
@@ -1629,7 +1632,10 @@ export interface components {
         Campaign: {
             /** Format: uuid */
             id: string;
-            /** @description Owner's Firebase UID. */
+            /**
+             * Format: uuid
+             * @description Owner's user ID.
+             */
             owner_id: string;
             name: string;
             description: string;

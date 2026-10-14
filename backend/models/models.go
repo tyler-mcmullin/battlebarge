@@ -8,11 +8,12 @@ import (
 
 // Database Structs
 type User struct {
-	ID        string    `json:"id" db:"id"`
-	Email     string    `json:"email" db:"email"`
-	Username  string    `json:"username" db:"username"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
+	ID         uuid.UUID `json:"id" db:"id"`
+	FirebaseId string    `json:"-" db:"firebase_id"`
+	Email      string    `json:"email" db:"email"`
+	Username   string    `json:"username" db:"username"`
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type Warband struct {

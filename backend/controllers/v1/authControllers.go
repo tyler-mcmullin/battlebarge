@@ -9,6 +9,7 @@ import (
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"battlebarge/db"
@@ -38,11 +39,11 @@ func userInsertConflict(err error) (string, bool) {
 	return "", false
 }
 
-// RegisterUser handles POST /auth/register. Creates a Firebase user and a matching Postgres user, rolling back the Firebase user if the database insert fails. Usernames are unique ignoring case. The new user must verify their email before the API will accept their token
+// RegisterUser handles POST /auth/register. Creates a Firebase user and a matching Postgres user with its own UUID (the Firebase UID is stored separately and never exposed), rolling back the Firebase user if the database insert fails. Usernames are unique ignoring case. The new user must verify their email before the API will accept their token
 //
 // Arguments: gin context
 //
-// Returns: None (responds 201 with the new user ID and email_verification_required; 400 on bad input, including a username over 50 or email over 255 characters; 409 if email or username is taken)
+// Returns: None (responds 201 with the new user ID (our UUID, not the Firebase UID) and email_verification_required; 400 on bad input, including a username over 50 or email over 255 characters; 409 if email or username is taken)
 func RegisterUser(c *gin.Context) {
 	var req models.RegisterRequest
 
@@ -66,11 +67,12 @@ func RegisterUser(c *gin.Context) {
 	}
 
 	user := models.User{
-		ID:        firebaseUser.UID,
-		Email:     req.Email,
-		Username:  req.Username,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:         uuid.New(),
+		FirebaseId: firebaseUser.UID,
+		Email:      req.Email,
+		Username:   req.Username,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	if err := repositories.CreateUser(user); err != nil {

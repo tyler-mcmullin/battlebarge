@@ -53,7 +53,7 @@ func TestWarbandLifecycle(t *testing.T) {
 	w := call(r, "owner", http.MethodPost, "/warbands/create", `{"name":"Da Boyz"}`)
 	expect(t, w, http.StatusCreated)
 	created := decodeWarband(t, w)
-	if created.Name != "Da Boyz" || created.UserID != "owner" || created.Faction != "" || created.SupplyLimit != 0 {
+	if created.Name != "Da Boyz" || created.UserID != testutil.UserID("owner") || created.Faction != "" || created.SupplyLimit != 0 {
 		t.Errorf("unexpected created warband: %+v", created)
 	}
 	path := "/warbands/" + created.ID.String()

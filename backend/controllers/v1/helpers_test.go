@@ -11,6 +11,7 @@ import (
 	controllers "battlebarge/controllers/v1"
 	"battlebarge/middleware"
 	"battlebarge/models"
+	"battlebarge/testutil"
 )
 
 func init() { gin.SetMode(gin.TestMode) }
@@ -69,12 +70,12 @@ func newRouter() *gin.Engine {
 	return r
 }
 
-// call sends a request as the given user ("" for unauthenticated) and returns the recorder.
+// call sends a request as the given test user name ("" for unauthenticated) and returns the recorder.
 func call(r *gin.Engine, uid, method, path, body string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if uid != "" {
-		req.Header.Set("X-Test-UID", uid)
+		req.Header.Set("X-Test-UID", testutil.UserID(uid))
 	}
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

@@ -2,6 +2,7 @@ package repositories_test
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"testing"
 	"time"
 
@@ -19,10 +20,11 @@ func TestUsernamesAreUniqueIgnoringCase(t *testing.T) {
 
 	now := time.Now()
 	user := func(id, username string) models.User {
-		return models.User{ID: id, Email: id + "@example.com", Username: username, CreatedAt: now, UpdatedAt: now}
+		return models.User{ID: uuid.New(), FirebaseId: id, Email: id + "@example.com", Username: username, CreatedAt: now, UpdatedAt: now}
 	}
 
-	if err := repositories.CreateUser(user("u1", "Alice")); err != nil {
+	alice := user("u1", "Alice")
+	if err := repositories.CreateUser(alice); err != nil {
 		t.Fatal(err)
 	}
 
@@ -38,7 +40,7 @@ func TestUsernamesAreUniqueIgnoringCase(t *testing.T) {
 	if err := repositories.CreateUser(user("u2", "Alicia")); err != nil {
 		t.Errorf("a different username should be allowed: %v", err)
 	}
-	got, err := repositories.GetUserByID("u1")
+	got, err := repositories.GetUserByID(alice.ID.String())
 	if err != nil || got.Username != "Alice" {
 		t.Errorf("stored username = %q (err %v), want it kept as Alice", got.Username, err)
 	}

@@ -13,6 +13,7 @@ import (
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/time/rate"
 
 	"battlebarge/middleware"
@@ -20,7 +21,11 @@ import (
 	"battlebarge/testutil"
 )
 
-func init() { gin.SetMode(gin.TestMode) }
+func init() {
+	gin.SetMode(gin.TestMode)
+	// RequireAuth looks users up in Postgres; by default these tests skip that
+	middleware.SetUserIDResolver(func(firebaseID string) (string, error) { return "user-" + firebaseID, nil })
+}
 
 // do runs one request through a router with the given middleware and a
 // handler that records whether it was reached.
@@ -102,7 +107,7 @@ func TestLoadUser_AttachesUser(t *testing.T) {
 
 	var got models.User
 	r := gin.New()
-	r.Use(setUID("real"), middleware.LoadUser())
+	r.Use(setUID(want.ID.String()), middleware.LoadUser())
 	r.GET("/", func(c *gin.Context) {
 		got = c.MustGet(middleware.ContextUserKey).(models.User)
 		c.Status(http.StatusOK)
@@ -265,9 +270,14 @@ func TestRequireAuth_AcceptsVerifiedToken(t *testing.T) {
 	var gotToken string
 	restore := middleware.SetTokenVerifier(func(ctx context.Context, idToken string) (*auth.Token, error) {
 		gotToken = idToken
-		return &auth.Token{UID: "user-123", Claims: map[string]any{"email_verified": true}}, nil
+		return &auth.Token{UID: "firebase-123", Claims: map[string]any{"email_verified": true}}, nil
 	})
 	defer restore()
+	var gotFirebaseID string
+	defer middleware.SetUserIDResolver(func(firebaseID string) (string, error) {
+		gotFirebaseID = firebaseID
+		return "our-uuid-123", nil
+	})()
 
 	var gotUID string
 	r := gin.New()
@@ -285,8 +295,49 @@ func TestRequireAuth_AcceptsVerifiedToken(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", w.Code)
 	}
-	if gotToken != "the-token" || gotUID != "user-123" {
-		t.Errorf("verifier got %q, handler saw uid %q; want the-token / user-123", gotToken, gotUID)
+	if gotToken != "the-token" || gotFirebaseID != "firebase-123" || gotUID != "our-uuid-123" {
+		t.Errorf("verifier got %q, resolver got %q, handler saw uid %q; want the-token / firebase-123 / our-uuid-123", gotToken, gotFirebaseID, gotUID)
+	}
+}
+
+func TestRequireAuth_UnknownUser(t *testing.T) {
+	defer middleware.SetTokenVerifier(func(ctx context.Context, idToken string) (*auth.Token, error) {
+		return &auth.Token{UID: "firebase-new", Claims: map[string]any{"email_verified": true}}, nil
+	})()
+	defer middleware.SetUserIDResolver(func(string) (string, error) { return "", pgx.ErrNoRows })()
+
+	reached := false
+	r := gin.New()
+	r.Use(middleware.RequireAuth())
+	r.GET("/", func(c *gin.Context) { reached = true })
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer t")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized || reached {
+		t.Errorf("status = %d, reached = %v; want 401 and the handler not run", w.Code, reached)
+	}
+}
+
+func TestRequireAuth_LookupFailure(t *testing.T) {
+	defer middleware.SetTokenVerifier(func(ctx context.Context, idToken string) (*auth.Token, error) {
+		return &auth.Token{UID: "firebase-1", Claims: map[string]any{"email_verified": true}}, nil
+	})()
+	defer middleware.SetUserIDResolver(func(string) (string, error) { return "", errors.New("db down") })()
+
+	r := gin.New()
+	r.Use(middleware.RequireAuth())
+	r.GET("/", func(c *gin.Context) {})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer t")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500", w.Code)
 	}
 }
 

@@ -97,7 +97,7 @@ func TestCampaignLifecycle(t *testing.T) {
 	w := call(r, "owner", http.MethodPost, "/campaigns/create", `{"name":"Crusade"}`)
 	expect(t, w, http.StatusCreated)
 	c := decodeCampaign(t, w)
-	if c.Name != "Crusade" || c.OwnerID != "owner" || c.Settings != (models.CampaignSettings{}) {
+	if c.Name != "Crusade" || c.OwnerID != testutil.UserID("owner") || c.Settings != (models.CampaignSettings{}) {
 		t.Errorf("unexpected campaign: %+v", c)
 	}
 	path := "/campaigns/" + c.ID.String()

@@ -17,11 +17,13 @@ import (
 // schemaSQL mirrors the tables the repositories expect. The users, warbands,
 // units and unit_perks tables are copied from a pg_dump of the real database;
 // the campaign tables come from backend/db/migrations/002_campaigns.sql plus
-// 003_campaign_join_codes.sql, and the lowercase username index is migration 004. The repo keeps
+// 003_campaign_join_codes.sql, the lowercase username index is migration 004, and
+// the uuid user IDs and firebase_id column are migration 005. The repo keeps
 // no schema file, so keep this in sync when the real schema changes.
 const schemaSQL = `
 CREATE TABLE users (
-	id         varchar(128) PRIMARY KEY,
+	id          uuid PRIMARY KEY,
+	firebase_id varchar(128) NOT NULL UNIQUE,
 	email      varchar(255) NOT NULL UNIQUE,
 	username   varchar(50) NOT NULL UNIQUE,
 	created_at timestamptz NOT NULL DEFAULT now(),
@@ -32,7 +34,7 @@ CREATE UNIQUE INDEX users_username_lower_key ON users (lower(username));
 
 CREATE TABLE warbands (
 	id                 uuid PRIMARY KEY,
-	user_id            text NOT NULL REFERENCES users(id),
+	user_id            uuid NOT NULL REFERENCES users(id),
 	name               text NOT NULL,
 	faction            text NOT NULL DEFAULT '',
 	description        text NOT NULL DEFAULT '',
@@ -68,7 +70,7 @@ CREATE INDEX unit_perks_unit_id_idx ON unit_perks (unit_id);
 
 CREATE TABLE campaigns (
 	id                   uuid PRIMARY KEY,
-	owner_id             varchar(128) NOT NULL REFERENCES users(id),
+	owner_id             uuid NOT NULL REFERENCES users(id),
 	name                 text NOT NULL,
 	description          text NOT NULL DEFAULT '',
 	points_per_win       integer NOT NULL DEFAULT 0,
@@ -177,25 +179,35 @@ func SetupDB(t *testing.T) {
 	})
 }
 
-// InsertUser inserts a user directly into the test database; the email and username are derived from the ID
+// UserID returns the fixed UUID that InsertUser, InsertWarband and InsertCampaign give the test user called name, so tests can refer to users by a readable name
 //
-// Arguments: t (*testing.T) - the running test; id (string) - Firebase-style user ID
+// Arguments: name (string) - a short test user name such as "owner"
+//
+// Returns: string - the same UUID text for the same name on every call
+func UserID(name string) string {
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte("battlebarge-test-user-"+name)).String()
+}
+
+// InsertUser inserts a user directly into the test database; the ID is UserID(name), the Firebase ID is "fb_"+name, and the email and username are derived from the name
+//
+// Arguments: t (*testing.T) - the running test; name (string) - short test user name
 //
 // Returns: models.User - the inserted user
-func InsertUser(t *testing.T, id string) models.User {
+func InsertUser(t *testing.T, name string) models.User {
 	t.Helper()
 
 	now := time.Now()
 	u := models.User{
-		ID:        id,
-		Email:     id + "@example.com",
-		Username:  "user_" + id,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:         uuid.MustParse(UserID(name)),
+		FirebaseId: "fb_" + name,
+		Email:      name + "@example.com",
+		Username:   "user_" + name,
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 	_, err := db.PGClient.Exec(context.Background(),
-		`INSERT INTO users (id, email, username, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`,
-		u.ID, u.Email, u.Username, u.CreatedAt, u.UpdatedAt)
+		`INSERT INTO users (id, firebase_id, email, username, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
+		u.ID, u.FirebaseId, u.Email, u.Username, u.CreatedAt, u.UpdatedAt)
 	if err != nil {
 		t.Fatalf("insert user: %v", err)
 	}
@@ -204,7 +216,7 @@ func InsertUser(t *testing.T, id string) models.User {
 
 // InsertWarband inserts a warband directly into the test database
 //
-// Arguments: t (*testing.T) - the running test; userID (string) - owning user ID; name (string) - warband name
+// Arguments: t (*testing.T) - the running test; userID (string) - name of the owning test user; name (string) - warband name
 //
 // Returns: models.Warband - the inserted warband (without computed fields)
 func InsertWarband(t *testing.T, userID, name string) models.Warband {
@@ -213,7 +225,7 @@ func InsertWarband(t *testing.T, userID, name string) models.Warband {
 	now := time.Now()
 	w := models.Warband{
 		ID:        uuid.New(),
-		UserID:    userID,
+		UserID:    UserID(userID),
 		Name:      name,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -256,14 +268,14 @@ func InsertUnit(t *testing.T, warbandID uuid.UUID, name string, points int) mode
 
 // InsertCampaign inserts a campaign directly into the test database
 //
-// Arguments: t (*testing.T) - the running test; ownerID (string) - owning user ID; name (string) - campaign name
+// Arguments: t (*testing.T) - the running test; ownerID (string) - name of the owning test user; name (string) - campaign name
 //
 // Returns: models.Campaign - the inserted campaign (without chapters, teams, or warbands), with JoinCode set to "TESTCODE01"
 func InsertCampaign(t *testing.T, ownerID, name string) models.Campaign {
 	t.Helper()
 
 	now := time.Now()
-	c := models.Campaign{ID: uuid.New(), OwnerID: ownerID, Name: name, JoinCode: "TESTCODE01", CreatedAt: now, UpdatedAt: now}
+	c := models.Campaign{ID: uuid.New(), OwnerID: UserID(ownerID), Name: name, JoinCode: "TESTCODE01", CreatedAt: now, UpdatedAt: now}
 	_, err := db.PGClient.Exec(context.Background(),
 		`INSERT INTO campaigns (id, owner_id, name, join_code, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)`,
 		c.ID, c.OwnerID, c.Name, c.JoinCode, c.CreatedAt, c.UpdatedAt)

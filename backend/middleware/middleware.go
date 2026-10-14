@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 
 	"firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"golang.org/x/time/rate"
 
 	"battlebarge/db"
@@ -31,6 +33,23 @@ type TokenVerifier func(ctx context.Context, idToken string) (*auth.Token, error
 // account loses access immediately instead of when the token expires.
 var verifyToken TokenVerifier = func(ctx context.Context, idToken string) (*auth.Token, error) {
 	return db.AuthClient.VerifyIDTokenAndCheckRevoked(ctx, idToken)
+}
+
+// UserIDResolver maps a verified Firebase UID to our own user ID.
+type UserIDResolver func(firebaseID string) (string, error)
+
+// resolveUserID turns the Firebase UID from a verified token into the user's own UUID, which is what the rest of the API uses as the user's identity.
+var resolveUserID UserIDResolver = repositories.GetUserIDByFirebaseID
+
+// SetUserIDResolver replaces the Firebase UID lookup so tests can run RequireAuth without Postgres
+//
+// Arguments: r (UserIDResolver) - the lookup RequireAuth should use
+//
+// Returns: func() - restores the previous resolver
+func SetUserIDResolver(r UserIDResolver) func() {
+	prev := resolveUserID
+	resolveUserID = r
+	return func() { resolveUserID = prev }
 }
 
 // requireVerifiedEmail makes RequireAuth reject accounts whose email address
@@ -71,7 +90,7 @@ func SetTokenVerifier(v TokenVerifier) func() {
 
 // RequireAuth verifies the Firebase ID token sent in the Authorization header
 // (format: "Bearer <token>"), requires the account's email to be verified
-// (unless turned off), and attaches the verified UID to the request context. Routes that only need to know who the caller is should use this
+// (unless turned off), and looks up the user's own UUID from the verified Firebase UID and attaches it to the request context. Routes that only need to know who the caller is should use this
 // alone. Routes that need full user data should additionally chain LoadUser().
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -114,7 +133,19 @@ func RequireAuth() gin.HandlerFunc {
 			}
 		}
 
-		c.Set(ContextUIDKey, token.UID)
+		// Our users have their own UUID; the Firebase UID only proves who they are.
+		userID, err := resolveUserID(token.UID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+				return
+			}
+			log.Printf("auth: user lookup failed for %s %s: %v", c.Request.Method, c.Request.URL.Path, err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+
+		c.Set(ContextUIDKey, userID)
 
 		c.Next()
 	}

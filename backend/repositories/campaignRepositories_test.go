@@ -28,7 +28,7 @@ func TestCreateAndGetCampaign(t *testing.T) {
 
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	c := models.Campaign{
-		ID: uuid.New(), OwnerID: "owner", Name: "Crusade", Description: "d",
+		ID: uuid.New(), OwnerID: testutil.UserID("owner"), Name: "Crusade", Description: "d",
 		Settings:  models.CampaignSettings{PointsPerWin: 3, PointsPerLoss: 1, StartingRequisition: 5},
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -40,7 +40,7 @@ func TestCreateAndGetCampaign(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCampaignByID: %v", err)
 	}
-	if got.Name != "Crusade" || got.OwnerID != "owner" || got.Settings != c.Settings {
+	if got.Name != "Crusade" || got.OwnerID != testutil.UserID("owner") || got.Settings != c.Settings {
 		t.Errorf("unexpected campaign: %+v", got)
 	}
 	if got.Chapters == nil || got.Teams == nil || got.Warbands == nil {
@@ -67,7 +67,7 @@ func TestGetCampaignsForUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := repositories.GetCampaignsForUser("owner")
+	got, err := repositories.GetCampaignsForUser(testutil.UserID("owner"))
 	if err != nil {
 		t.Fatalf("GetCampaignsForUser: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestGetCampaignsForUser(t *testing.T) {
 		t.Errorf("owner should see owned + joined campaigns only, got %d: %+v", len(got), got)
 	}
 
-	none, err := repositories.GetCampaignsForUser("player")
+	none, err := repositories.GetCampaignsForUser(testutil.UserID("player"))
 	if err != nil || none == nil || len(none) != 0 {
 		t.Errorf("player = %v, %v; want empty non-nil slice", none, err)
 	}
@@ -94,7 +94,7 @@ func TestUpdateAndDeleteCampaign(t *testing.T) {
 
 	name := "After"
 	pts := 4
-	got, err := repositories.UpdateCampaign(id, "owner", models.UpdateCampaignRequest{Name: &name, PointsPerWin: &pts})
+	got, err := repositories.UpdateCampaign(id, testutil.UserID("owner"), models.UpdateCampaignRequest{Name: &name, PointsPerWin: &pts})
 	if err != nil {
 		t.Fatalf("UpdateCampaign: %v", err)
 	}
@@ -102,13 +102,13 @@ func TestUpdateAndDeleteCampaign(t *testing.T) {
 		t.Errorf("update not applied: %+v", got)
 	}
 
-	if _, err := repositories.UpdateCampaign(id, "intruder", models.UpdateCampaignRequest{Name: &name}); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err := repositories.UpdateCampaign(id, testutil.UserID("intruder"), models.UpdateCampaignRequest{Name: &name}); !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("non-owner update err = %v, want pgx.ErrNoRows", err)
 	}
-	if err := repositories.DeleteCampaign(id, "intruder"); !errors.Is(err, pgx.ErrNoRows) {
+	if err := repositories.DeleteCampaign(id, testutil.UserID("intruder")); !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("non-owner delete err = %v, want pgx.ErrNoRows", err)
 	}
-	if err := repositories.DeleteCampaign(id, "owner"); err != nil {
+	if err := repositories.DeleteCampaign(id, testutil.UserID("owner")); err != nil {
 		t.Fatalf("DeleteCampaign: %v", err)
 	}
 	if _, err := repositories.GetCampaignByID(id); !errors.Is(err, pgx.ErrNoRows) {
@@ -127,9 +127,9 @@ func TestIsCampaignOwner(t *testing.T) {
 		userID     string
 		want       bool
 	}{
-		{"owner", c.ID.String(), "owner", true},
-		{"other user", c.ID.String(), "someone", false},
-		{"unknown campaign", uuid.NewString(), "owner", false},
+		{"owner", c.ID.String(), testutil.UserID("owner"), true},
+		{"other user", c.ID.String(), uuid.NewString(), false},
+		{"unknown campaign", uuid.NewString(), testutil.UserID("owner"), false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := repositories.IsCampaignOwner(tt.campaignID, tt.userID)
@@ -336,7 +336,7 @@ func TestCampaignCascades(t *testing.T) {
 
 	// Deleting a campaign removes teams (despite occupied), chapters, and memberships,
 	// but not the warband itself.
-	if err := repositories.DeleteCampaign(cid, "owner"); err != nil {
+	if err := repositories.DeleteCampaign(cid, testutil.UserID("owner")); err != nil {
 		t.Fatalf("DeleteCampaign: %v", err)
 	}
 	if _, err := repositories.GetWarbandByID(wb.ID.String()); err != nil {
@@ -363,7 +363,7 @@ func TestDeletingWarbandLeavesCampaign(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := repositories.DeleteWarband(wb.ID.String(), "owner"); err != nil {
+	if err := repositories.DeleteWarband(wb.ID.String(), testutil.UserID("owner")); err != nil {
 		t.Fatalf("DeleteWarband: %v", err)
 	}
 	members, err := repositories.GetCampaignWarbands(c.ID.String())

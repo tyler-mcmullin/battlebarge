@@ -154,6 +154,7 @@ func TestJoinIsRateLimited(t *testing.T) {
 	defer middleware.SetTokenVerifier(func(ctx context.Context, idToken string) (*auth.Token, error) {
 		return &auth.Token{UID: "u1", Claims: map[string]any{"email_verified": true}}, nil
 	})()
+	defer middleware.SetUserIDResolver(func(string) (string, error) { return uuid.NewString(), nil })()
 
 	r := gin.New()
 	routes.GetCampaignControllers(r)

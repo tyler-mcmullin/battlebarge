@@ -59,7 +59,7 @@ func TestCreateAndGetWarband(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")
 
-	w := newWarband("owner", "Da Boyz")
+	w := newWarband(testutil.UserID("owner"), "Da Boyz")
 	if err := repositories.CreateWarband(w); err != nil {
 		t.Fatalf("CreateWarband: %v", err)
 	}
@@ -115,10 +115,10 @@ func TestGetAllWarbands(t *testing.T) {
 	testutil.InsertUser(t, "a")
 	testutil.InsertUser(t, "b")
 
-	older := newWarband("a", "older")
+	older := newWarband(testutil.UserID("a"), "older")
 	older.CreatedAt = older.CreatedAt.Add(-time.Hour)
-	newer := newWarband("a", "newer")
-	other := newWarband("b", "other")
+	newer := newWarband(testutil.UserID("a"), "newer")
+	other := newWarband(testutil.UserID("b"), "other")
 	for _, w := range []models.Warband{older, newer, other} {
 		if err := repositories.CreateWarband(w); err != nil {
 			t.Fatalf("CreateWarband: %v", err)
@@ -126,7 +126,7 @@ func TestGetAllWarbands(t *testing.T) {
 	}
 	testutil.InsertUnit(t, newer.ID, "u", 10)
 
-	got, err := repositories.GetAllWarbands("a")
+	got, err := repositories.GetAllWarbands(testutil.UserID("a"))
 	if err != nil {
 		t.Fatalf("GetAllWarbands: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestGetAllWarbands(t *testing.T) {
 		t.Errorf("computed fields not populated: %+v", got[0])
 	}
 
-	none, err := repositories.GetAllWarbands("nobody")
+	none, err := repositories.GetAllWarbands(uuid.NewString())
 	if err != nil || none == nil || len(none) != 0 {
 		t.Errorf("GetAllWarbands for unknown user = %v, %v; want empty non-nil slice", none, err)
 	}
@@ -150,13 +150,13 @@ func TestUpdateWarband(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")
 	testutil.InsertUser(t, "intruder")
-	w := newWarband("owner", "Original")
+	w := newWarband(testutil.UserID("owner"), "Original")
 	if err := repositories.CreateWarband(w); err != nil {
 		t.Fatal(err)
 	}
 
 	newName := "Renamed"
-	got, err := repositories.UpdateWarband(w.ID.String(), "owner", models.UpdateWarbandRequest{Name: &newName})
+	got, err := repositories.UpdateWarband(w.ID.String(), testutil.UserID("owner"), models.UpdateWarbandRequest{Name: &newName})
 	if err != nil {
 		t.Fatalf("UpdateWarband: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestUpdateWarband(t *testing.T) {
 		t.Errorf("nil fields should be unchanged: %+v", got)
 	}
 
-	_, err = repositories.UpdateWarband(w.ID.String(), "intruder", models.UpdateWarbandRequest{Name: &newName})
+	_, err = repositories.UpdateWarband(w.ID.String(), testutil.UserID("intruder"), models.UpdateWarbandRequest{Name: &newName})
 	if !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("non-owner err = %v, want pgx.ErrNoRows", err)
 	}
@@ -180,10 +180,10 @@ func TestDeleteWarband(t *testing.T) {
 	w := testutil.InsertWarband(t, "owner", "W")
 	u := testutil.InsertUnit(t, w.ID, "u", 1)
 
-	if err := repositories.DeleteWarband(w.ID.String(), "intruder"); !errors.Is(err, pgx.ErrNoRows) {
+	if err := repositories.DeleteWarband(w.ID.String(), testutil.UserID("intruder")); !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("non-owner delete err = %v, want pgx.ErrNoRows", err)
 	}
-	if err := repositories.DeleteWarband(w.ID.String(), "owner"); err != nil {
+	if err := repositories.DeleteWarband(w.ID.String(), testutil.UserID("owner")); err != nil {
 		t.Fatalf("DeleteWarband: %v", err)
 	}
 	if _, err := repositories.GetWarbandByID(w.ID.String()); !errors.Is(err, pgx.ErrNoRows) {
@@ -192,7 +192,7 @@ func TestDeleteWarband(t *testing.T) {
 	if _, err := repositories.GetUnitByID(u.ID.String()); !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("units should cascade with warband: %v", err)
 	}
-	if err := repositories.DeleteWarband(w.ID.String(), "owner"); !errors.Is(err, pgx.ErrNoRows) {
+	if err := repositories.DeleteWarband(w.ID.String(), testutil.UserID("owner")); !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("second delete err = %v, want pgx.ErrNoRows", err)
 	}
 }
@@ -208,9 +208,9 @@ func TestIsWarbandOwner(t *testing.T) {
 		userID    string
 		want      bool
 	}{
-		{"owner", w.ID.String(), "owner", true},
-		{"other user", w.ID.String(), "someone", false},
-		{"unknown warband", uuid.NewString(), "owner", false},
+		{"owner", w.ID.String(), testutil.UserID("owner"), true},
+		{"other user", w.ID.String(), uuid.NewString(), false},
+		{"unknown warband", uuid.NewString(), testutil.UserID("owner"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -228,7 +228,7 @@ func TestIsWarbandOwner(t *testing.T) {
 func TestSaveWarband(t *testing.T) {
 	testutil.SetupDB(t)
 	testutil.InsertUser(t, "owner")
-	w := newWarband("owner", "Before")
+	w := newWarband(testutil.UserID("owner"), "Before")
 	if err := repositories.CreateWarband(w); err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestSaveWarband(t *testing.T) {
 		t.Errorf("save not persisted: %+v", got)
 	}
 
-	w.UserID = "someone-else"
+	w.UserID = uuid.NewString()
 	if err := repositories.SaveWarband(w); !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("wrong owner err = %v, want pgx.ErrNoRows", err)
 	}

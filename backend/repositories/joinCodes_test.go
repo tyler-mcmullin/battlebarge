@@ -58,7 +58,7 @@ func TestCreateCampaignStoresJoinCode(t *testing.T) {
 
 	code, _ := repositories.NewJoinCode()
 	now := time.Now()
-	c := models.Campaign{ID: uuid.New(), OwnerID: "owner", Name: "C", JoinCode: code, CreatedAt: now, UpdatedAt: now}
+	c := models.Campaign{ID: uuid.New(), OwnerID: testutil.UserID("owner"), Name: "C", JoinCode: code, CreatedAt: now, UpdatedAt: now}
 	if err := repositories.CreateCampaign(c); err != nil {
 		t.Fatal(err)
 	}
@@ -86,14 +86,14 @@ func TestRotateJoinCode(t *testing.T) {
 	c := testutil.InsertCampaign(t, "owner", "C")
 	id := c.ID.String()
 
-	if _, err := repositories.RotateJoinCode(id, "intruder"); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err := repositories.RotateJoinCode(id, testutil.UserID("intruder")); !errors.Is(err, pgx.ErrNoRows) {
 		t.Errorf("non-owner rotate err = %v, want pgx.ErrNoRows", err)
 	}
 	if got, _ := repositories.GetJoinCode(id); got != c.JoinCode {
 		t.Errorf("a refused rotation changed the code to %q", got)
 	}
 
-	fresh, err := repositories.RotateJoinCode(id, "owner")
+	fresh, err := repositories.RotateJoinCode(id, testutil.UserID("owner"))
 	if err != nil {
 		t.Fatalf("RotateJoinCode: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestRotatingStopsTheOldCode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fresh, err := repositories.RotateJoinCode(cid, "owner")
+	fresh, err := repositories.RotateJoinCode(cid, testutil.UserID("owner"))
 	if err != nil {
 		t.Fatal(err)
 	}

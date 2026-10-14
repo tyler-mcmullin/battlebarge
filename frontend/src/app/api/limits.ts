@@ -11,7 +11,9 @@ export const LIMITS = {
   name: 100,
   faction: 100,
   warbandDescription: 2000,
-  unitBio: 5000,
-  perkDescription: 1000,
-  points: { min: 0, max: 1_000_000 },
+  unitBio: 2000,
+  perkDescription: 500,
+  points: { min: 0, max: 50_000 },
+  requisition: { min: 0, max: 500 },
+  supplyLimit: { min: 0, max: 50_000 },
 } as const;

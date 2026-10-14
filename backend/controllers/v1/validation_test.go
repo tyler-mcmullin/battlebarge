@@ -35,7 +35,8 @@ func TestValidation_Rejected(t *testing.T) {
 		{"warband: description over 2000", "POST", "/warbands/create", `{"name":"x","description":"` + repeat("d", 2001) + `"}`},
 		{"warband: faction over 100", "POST", "/warbands/create", `{"name":"x","faction":"` + w101 + `"}`},
 		{"warband: negative requisition", "POST", "/warbands/create", `{"name":"x","requisition_points":-1}`},
-		{"warband: requisition over max", "POST", "/warbands/create", `{"name":"x","requisition_points":1000001}`},
+		{"warband: requisition over max", "POST", "/warbands/create", `{"name":"x","requisition_points":501}`},
+		{"warband: supply limit over max", "POST", "/warbands/create", `{"name":"x","supply_limit":50001}`},
 		{"warband: negative supply limit", "POST", "/warbands/create", `{"name":"x","supply_limit":-1}`},
 		{"warband update: empty name", "PATCH", "/warbands/" + id, `{"name":""}`},
 		{"warband update: blank name", "PATCH", "/warbands/" + id, `{"name":"  "}`},
@@ -44,9 +45,9 @@ func TestValidation_Rejected(t *testing.T) {
 		// units
 		{"unit: blank name", "POST", "/units/create", `{"warband_id":"` + id + `","unit_name":" "}`},
 		{"unit: name over 100", "POST", "/units/create", `{"warband_id":"` + id + `","unit_name":"` + w101 + `"}`},
-		{"unit: bio over 5000", "POST", "/units/create", `{"warband_id":"` + id + `","unit_name":"x","bio":"` + repeat("b", 5001) + `"}`},
+		{"unit: bio over 2000", "POST", "/units/create", `{"warband_id":"` + id + `","unit_name":"x","bio":"` + repeat("b", 2001) + `"}`},
 		{"unit: negative points", "POST", "/units/create", `{"warband_id":"` + id + `","unit_name":"x","points":-5}`},
-		{"unit: points over max", "POST", "/units/create", `{"warband_id":"` + id + `","unit_name":"x","points":1000001}`},
+		{"unit: points over max", "POST", "/units/create", `{"warband_id":"` + id + `","unit_name":"x","points":50001}`},
 		{"unit: warband_id over 36 chars", "POST", "/units/create", `{"warband_id":"` + repeat("a", 37) + `","unit_name":"x"}`},
 		{"unit update: negative points", "PATCH", "/units/" + id, `{"points":-500}`},
 		{"unit update: empty name", "PATCH", "/units/" + id, `{"unit_name":""}`},
@@ -59,7 +60,7 @@ func TestValidation_Rejected(t *testing.T) {
 		// perks
 		{"perk: blank name", "PATCH", "/units/" + id + "/perk", `{"name":"  "}`},
 		{"perk: name over 100", "PATCH", "/units/" + id + "/perk", `{"name":"` + w101 + `"}`},
-		{"perk: description over 1000", "PATCH", "/units/" + id + "/perk", `{"name":"x","description":"` + repeat("d", 1001) + `"}`},
+		{"perk: description over 500", "PATCH", "/units/" + id + "/perk", `{"name":"x","description":"` + repeat("d", 501) + `"}`},
 
 		// campaigns
 		{"campaign: blank name", "POST", "/campaigns/create", `{"name":"   "}`},
@@ -112,7 +113,7 @@ func TestValidation_Accepted(t *testing.T) {
 	r := newRouter()
 
 	w := call(r, "owner", http.MethodPost, "/warbands/create",
-		`{"name":"`+repeat("n", 100)+`","description":"`+repeat("d", 2000)+`","requisition_points":1000000,"supply_limit":0}`)
+		`{"name":"`+repeat("n", 100)+`","description":"`+repeat("d", 2000)+`","requisition_points":500,"supply_limit":50000}`)
 	expect(t, w, http.StatusCreated)
 	wb := decodeWarband(t, w)
 
@@ -126,7 +127,7 @@ func TestValidation_Accepted(t *testing.T) {
 	}
 
 	u := decodeUnit(t, call(r, "owner", http.MethodPost, "/units/create",
-		`{"warband_id":"`+wb.ID.String()+`","unit_name":"x","points":1000000,"bio":"`+repeat("b", 5000)+`"}`))
+		`{"warband_id":"`+wb.ID.String()+`","unit_name":"x","points":50000,"bio":"`+repeat("b", 2000)+`"}`))
 	for _, amount := range []string{"1000000", "-1000000"} {
 		expect(t, call(r, "owner", http.MethodPatch, "/units/"+u.ID.String()+"/kills", `{"amount":`+amount+`}`), http.StatusOK)
 	}

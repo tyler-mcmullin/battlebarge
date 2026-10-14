@@ -77,7 +77,7 @@ describe('WarbandFormDialog', () => {
     ['a blank name', 'name', '   ', 'Cannot be only spaces'],
     ['a name over 100 characters', 'name', 'n'.repeat(101), 'At most 100 characters'],
     ['a negative requisition', 'requisition_points', '-1', 'Must be at least 0'],
-    ['requisition over a million', 'requisition_points', '1000001', 'Must be at most 1000000'],
+    ['requisition over the maximum', 'requisition_points', '501', 'Must be at most 500'],
     ['a decimal supply limit', 'supply_limit', '2.5', 'Whole numbers only'],
   ])('rejects %s without calling the API', async (_label, field, value, message) => {
     const fixture = setup(null);

@@ -128,31 +128,31 @@ type CreateWarbandRequest struct {
 	Name              string  `json:"name" binding:"required,notblank,safetext,max=100"`
 	Faction           *string `json:"faction" binding:"omitempty,safetext,max=100"`
 	Description       *string `json:"description" binding:"omitempty,safetext,max=2000"`
-	RequisitionPoints *int    `json:"requisition_points" binding:"omitempty,min=0,max=1000000"`
-	SupplyLimit       *int    `json:"supply_limit" binding:"omitempty,min=0,max=1000000"`
+	RequisitionPoints *int    `json:"requisition_points" binding:"omitempty,min=0,max=500"`
+	SupplyLimit       *int    `json:"supply_limit" binding:"omitempty,min=0,max=50000"`
 }
 
 type UpdateWarbandRequest struct {
 	Name              *string `json:"name" binding:"omitempty,notblank,safetext,max=100"`
 	Faction           *string `json:"faction" binding:"omitempty,safetext,max=100"`
 	Description       *string `json:"description" binding:"omitempty,safetext,max=2000"`
-	RequisitionPoints *int    `json:"requisition_points" binding:"omitempty,min=0,max=1000000"`
-	SupplyLimit       *int    `json:"supply_limit" binding:"omitempty,min=0,max=1000000"`
+	RequisitionPoints *int    `json:"requisition_points" binding:"omitempty,min=0,max=500"`
+	SupplyLimit       *int    `json:"supply_limit" binding:"omitempty,min=0,max=50000"`
 }
 
 type CreateUnitRequest struct {
 	WarbandID     string  `json:"warband_id" binding:"required,max=36"`
 	UnitName      string  `json:"unit_name" binding:"required,notblank,safetext,max=100"`
 	NarrativeName *string `json:"narrative_name" binding:"omitempty,safetext,max=100"`
-	Bio           *string `json:"bio" binding:"omitempty,safetext,max=5000"`
-	Points        *int    `json:"points" binding:"omitempty,min=0,max=1000000"`
+	Bio           *string `json:"bio" binding:"omitempty,safetext,max=2000"`
+	Points        *int    `json:"points" binding:"omitempty,min=0,max=50000"`
 }
 
 type UpdateUnitRequest struct {
 	UnitName      *string `json:"unit_name" binding:"omitempty,notblank,safetext,max=100"`
 	NarrativeName *string `json:"narrative_name" binding:"omitempty,safetext,max=100"`
-	Bio           *string `json:"bio" binding:"omitempty,safetext,max=5000"`
-	Points        *int    `json:"points" binding:"omitempty,min=0,max=1000000"`
+	Bio           *string `json:"bio" binding:"omitempty,safetext,max=2000"`
+	Points        *int    `json:"points" binding:"omitempty,min=0,max=50000"`
 }
 
 // Amount is a pointer so a missing field (400) is distinguishable from an
@@ -164,7 +164,7 @@ type IncrementRequest struct {
 type AddPerkRequest struct {
 	ID          uuid.UUID `json:"perk_id"`
 	Name        string    `json:"name" binding:"required,notblank,safetext,max=100"`
-	Description *string   `json:"description" binding:"omitempty,safetext,max=1000"`
+	Description *string   `json:"description" binding:"omitempty,safetext,max=500"`
 	IsScar      bool      `json:"is_scar"`
 }
 

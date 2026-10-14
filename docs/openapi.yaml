@@ -997,8 +997,8 @@ components:
         name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
         faction: { type: string, maxLength: 100 }
         description: { type: string, maxLength: 2000 }
-        requisition_points: { type: integer, minimum: 0, maximum: 1000000 }
-        supply_limit: { type: integer, minimum: 0, maximum: 1000000 }
+        requisition_points: { type: integer, minimum: 0, maximum: 500 }
+        supply_limit: { type: integer, minimum: 0, maximum: 50000 }
 
     UpdateWarbandRequest:
       type: object
@@ -1007,8 +1007,8 @@ components:
         name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
         faction: { type: string, maxLength: 100 }
         description: { type: string, maxLength: 2000 }
-        requisition_points: { type: integer, minimum: 0, maximum: 1000000 }
-        supply_limit: { type: integer, minimum: 0, maximum: 1000000 }
+        requisition_points: { type: integer, minimum: 0, maximum: 500 }
+        supply_limit: { type: integer, minimum: 0, maximum: 50000 }
 
     CreateUnitRequest:
       type: object
@@ -1017,8 +1017,8 @@ components:
         warband_id: { type: string, format: uuid, description: A warband you own. }
         unit_name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
         narrative_name: { type: string, maxLength: 100 }
-        bio: { type: string, maxLength: 5000 }
-        points: { type: integer, minimum: 0, maximum: 1000000 }
+        bio: { type: string, maxLength: 2000 }
+        points: { type: integer, minimum: 0, maximum: 50000 }
 
     UpdateUnitRequest:
       type: object
@@ -1026,8 +1026,8 @@ components:
       properties:
         unit_name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
         narrative_name: { type: string, maxLength: 100 }
-        bio: { type: string, maxLength: 5000 }
-        points: { type: integer, minimum: 0, maximum: 1000000 }
+        bio: { type: string, maxLength: 2000 }
+        points: { type: integer, minimum: 0, maximum: 50000 }
 
     IncrementRequest:
       type: object
@@ -1044,7 +1044,7 @@ components:
       required: [name]
       properties:
         name: { type: string, minLength: 1, maxLength: 100, description: Not blank. }
-        description: { type: string, maxLength: 1000 }
+        description: { type: string, maxLength: 500 }
         is_scar: { type: boolean, default: false }
 
     CreateCampaignRequest:

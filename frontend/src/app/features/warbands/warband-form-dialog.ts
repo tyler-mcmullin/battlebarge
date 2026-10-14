@@ -13,10 +13,11 @@ import { describeError, isHandled } from '../../core/errors';
 import { errorMessage } from '../../shared/form-errors';
 import { notBlank, safeText, wholeNumber } from '../../shared/validators';
 
-const pointsValidators = [
+/** Validators for a whole-number field with the given range. */
+const rangeValidators = (range: { min: number; max: number }) => [
   Validators.required,
-  Validators.min(LIMITS.points.min),
-  Validators.max(LIMITS.points.max),
+  Validators.min(range.min),
+  Validators.max(range.max),
   wholeNumber,
 ];
 
@@ -50,8 +51,11 @@ export class WarbandFormDialog {
       this.warband?.description ?? '',
       [safeText, Validators.maxLength(LIMITS.warbandDescription)],
     ],
-    requisition_points: [this.warband?.requisition_points ?? 0, pointsValidators],
-    supply_limit: [this.warband?.supply_limit ?? 0, pointsValidators],
+    requisition_points: [
+      this.warband?.requisition_points ?? 0,
+      rangeValidators(LIMITS.requisition),
+    ],
+    supply_limit: [this.warband?.supply_limit ?? 0, rangeValidators(LIMITS.supplyLimit)],
   });
   protected readonly busy = signal(false);
   protected readonly error = signal('');

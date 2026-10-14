@@ -23,3 +23,8 @@ testlogin_files/
 
 # Personal Project Notes
 project_notes.txt
+
+# Personal learning guides and code maps
+FRONTEND_GUIDE.md
+BACKEND_GUIDE.md
+backend/CODE_MAP.md

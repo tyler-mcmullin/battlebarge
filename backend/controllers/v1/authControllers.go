@@ -92,7 +92,7 @@ func RegisterUser(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message":                     "user created",
-		"user_id":                     firebaseUser.UID,
+		"user_id":                     user.ID.String(),
 		"email_verification_required": middleware.EmailVerificationRequired(),
 	})
 }
